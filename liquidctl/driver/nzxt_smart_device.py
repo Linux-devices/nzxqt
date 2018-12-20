@@ -247,3 +247,11 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
             return
         self.device.write(_WRITE_ENDPOINT, data + padding, _WRITE_TIMEOUT)
 
+    def get_color_modes(self):
+        return _COLOR_MODES
+        
+    def get_color_channels(self):
+        return _COLOR_CHANNELS
+
+    def get_animation_speeds(self):
+        return _ANIMATION_SPEEDS

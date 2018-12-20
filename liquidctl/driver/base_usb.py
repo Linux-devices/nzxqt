@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import sys
+import sys, os
 import logging
 
 import usb.core
@@ -25,7 +25,6 @@ import usb.util
 
 
 LOGGER = logging.getLogger(__name__)
-
 
 class BaseUsbDriver(object):
     """Base driver class for USB devices.
@@ -45,6 +44,10 @@ class BaseUsbDriver(object):
         self.description = description
         self.dry_run = False
         self._should_reattach_kernel_driver = False
+
+        if sys.platform.startswith('linux'):
+            path = "/dev/bus/usb/%03d/%03d" % (self.device.bus, self.device.address)
+            os.system('python3 %s/liquidctl/common/setperms.py %s' % (os.getcwd(), path) )
 
     @classmethod
     def find_supported_devices(cls):
@@ -118,3 +121,14 @@ class BaseUsbDriver(object):
         """Set channel to a fixed speed."""
         raise NotImplementedError()
 
+    def get_color_modes(self):
+        """Get list of color modes available to device"""
+        raise NotImplementedError()
+
+    def get_color_channels(self):
+        """Get list of color channels available to device"""
+        return NotImplementedError()
+
+    def get_animation_speeds(self):
+        """Get list of speeds for the color animation"""
+        return NotImplementedError()
