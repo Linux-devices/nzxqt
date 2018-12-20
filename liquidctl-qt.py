@@ -4,8 +4,8 @@ import mainwindow as mainwindow
 import usb.core
 
 from PyQt5 import *
-import argparse
 import itertools
+import json
 
 import liquidctl.util
 from liquidctl.driver.kraken_two import KrakenTwoDriver
@@ -29,6 +29,13 @@ class MainWindow(QtWidgets.QMainWindow):
         q = self.get_logo_qcolor()
         return (q.red(), q.green(), q.blue())
 
+    def selected_device_changed(self):
+        for item in self.ui.menu_Select_Device.children():
+            item.setChecked((self.device.device.serial_number == item.objectName()))
+
+        self.ui.comboBoxPresetModes.clear()
+        self.ui.comboBoxPresetModes.addItems(self.device.get_color_modes())
+
     def reload_device_list(self):
         last_device = self.device
 
@@ -36,24 +43,26 @@ class MainWindow(QtWidgets.QMainWindow):
         self.device = self.devices[0][1]
 
         self.ui.menu_Select_Device.clear()
-
         for i, dev in self.devices:
             action = QtWidgets.QAction(self.ui.menu_Select_Device)
             action.setObjectName(dev.device.serial_number)
             action.setText(dev.description)
-            #action.setCheckable(True)
-            action.triggered.connect(self.select_device)
+            action.setCheckable(True)
+            action.triggered.connect(self.select_device_menu_tiggered)
             self.ui.menu_Select_Device.addAction(action)
 
             if ((last_device == None) or (last_device.device.serial_number == dev.device.serial_number)):
                 self.device = dev
-                action.setChecked(True)
 
-        self.ui.comboBoxPresetModes.clear()
-        self.ui.comboBoxPresetModes.addItems(self.device.get_color_modes())
+        self.selected_device_changed()
 
-    def select_device(self, arg):
-        self.sender()
+    def select_device_menu_tiggered(self, arg):
+        for i, dev in self.devices:
+            if (dev.device.serial_number == self.sender().objectName()):
+                self.device = dev
+                break
+
+        self.selected_device_changed()
 
     def save_clicked(self, value):
 
@@ -92,13 +101,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def mode_changed(self):
-        pass
+        mode = self.ui.comboBoxPresetModes.currentText()
+        mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
+        self.ui.labelPresetModeInfo.setText("Min Colors: %s\nMax Colors: %s\nRing Only: %s" % (mincolors, maxcolors, ringonly))
+        self.ui.label
+        
     def slice_clicked(self):
-        sender = self.sender()
-        self.picked = sender
-        #sender.setBorderColor(QtGui.QColor(128,1,1, 255))
+        self.picked = self.sender()
         self.colorDialog.setCurrentColor(self.picked.color())
-        #print(sender.label())
     def logo_clicked(self, evt):
         self.picked = self.ui.labelLogo
         self.colorDialog.setCurrentColor(self.get_logo_qcolor())
