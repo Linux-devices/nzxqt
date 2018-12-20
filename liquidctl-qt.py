@@ -26,8 +26,14 @@ class MainWindow(QtWidgets.QMainWindow):
         return QtGui.QColor(self.ui.labelLogo.palette().color(self.ui.labelLogo.foregroundRole()).name())
 
     def get_logo_color(self):
-        q = self.get_logo_qcolor()
-        return (q.red(), q.green(), q.blue())
+        color = self.get_logo_qcolor().name().replace("#", "")
+        return bytes.fromhex(color)
+        #q = self.get_logo_qcolor()
+        #return (q.red(), q.green(), q.blue())
+
+    def get_slice_color(self, index):
+        color = self.series.slices()[index].color().name().replace("#", "")
+        return bytes.fromhex(color)
 
     def selected_device_changed(self):
         for item in self.ui.menu_Select_Device.children():
@@ -35,6 +41,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.ui.comboBoxPresetModes.clear()
         self.ui.comboBoxPresetModes.addItems(self.device.get_color_modes())
+
+        self.ui.labelDevDeviceName.setText("Device: %s" % self.device.description)
+        self.ui.labelDevSerialNo.setText("Serial No: %s" % self.device.device.serial_number)
 
     def reload_device_list(self):
         last_device = self.device
@@ -70,10 +79,10 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         mode = self.ui.comboBoxPresetModes.currentText()
-        channel = 'sync'
-        colors = [self.get_logo_color()]
-        speed = 'slowest'
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
+        colors = [self.get_slice_color(0) if ringonly else self.get_logo_color()]
+        channel = 'sync'
+        speed = 'slowest'
 
         for key, value in self.device.get_animation_speeds().items():
             if (value == self.ui.horizontalSliderASpeed.value()):
@@ -82,30 +91,58 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if (maxcolors > 0):
             for i, ps in enumerate(self.series.slices()):
-                color = ps.color().name().replace("#", "")
-                if (i >= maxcolors):
+                if (ringonly and i==0):
+                    continue
+                if (len(colors) == maxcolors):
                     break
+                colors.append(self.get_slice_color(i))
 
-                colors.append(bytes.fromhex(color))
+        self.ui.labelBothMode.setText('mixed')
 
-        if (self.ui.checkBoxLogoLed.isChecked()):
+        if (self.ui.radioButtonPresetLogo.isChecked()):
+            self.ui.labelLogoMode.setText(mode)
             channel = 'logo'
 
-        if (self.ui.checkBoxRingLed.isChecked()):
+        if (self.ui.radioButtonPresetRing.isChecked()):
+            self.ui.labelRingMode.setText(mode)
             channel = 'ring'
 
-        if (self.ui.checkBoxRingLed.isChecked() and self.ui.checkBoxLogoLed.isChecked()):
+        if (self.ui.radioButtonPresetBoth.isChecked()):
+            self.ui.labelLogoMode.setText(mode)
+            self.ui.labelRingMode.setText(mode)
+            self.ui.labelBothMode.setText(mode)
             channel = 'sync'
+
+        if (self.ui.labelLogoMode.text() == self.ui.labelRingMode.text()):
+            self.ui.labelBothMode.setText(mode)
 
         self.device.set_color(channel, mode, colors, speed)
 
-
     def mode_changed(self):
         mode = self.ui.comboBoxPresetModes.currentText()
+        if mode == '':
+            return
+
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
-        self.ui.labelPresetModeInfo.setText("Min Colors: %s\nMax Colors: %s\nRing Only: %s" % (mincolors, maxcolors, ringonly))
-        self.ui.label
-        
+        self.ui.labelPresetModeInfo.setText("Min Colors: %s\nMax Colors: %s\n" % (mincolors, maxcolors))
+
+        enabled = ringonly
+
+        if (ringonly):
+            self.ui.radioButtonPresetRing.setChecked(True)
+        else:
+            #enabled = (maxcolors <= 2)
+            self.ui.radioButtonPresetRing.setEnabled(not enabled)
+            #self.ui.radioButtonPresetBoth.setChecked(not enabled)
+
+        self.ui.radioButtonPresetBoth.setEnabled(not enabled)
+        self.ui.radioButtonPresetLogo.setEnabled(not enabled)
+
+        for i, ps in enumerate(self.series.slices()):
+            ps.setBorderColor(QtGui.QColor(255,255,255, 255) if i < maxcolors else QtGui.QColor(1,1,1, 255))
+
+    def slice_hovered(self):
+        print(self.sender())
     def slice_clicked(self):
         self.picked = self.sender()
         self.colorDialog.setCurrentColor(self.picked.color())
@@ -123,25 +160,49 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.picked.setColor(value)
 
+    def switch_mode_selection(self, sender, target):
+        if (sender.isChecked()):
+             index = self.ui.comboBoxPresetModes.findText(target.text())
+             if index > 0:
+                 self.ui.comboBoxPresetModes.setCurrentIndex(index)
+
+    def preset_logo_changed(self):
+        self.switch_mode_selection(self.sender(), self.ui.labelLogoMode)
+    def preset_ring_changed(self):
+        self.switch_mode_selection(self.sender(), self.ui.labelRingMode)
+    def preset_both_changed(self):
+        self.switch_mode_selection(self.sender(), self.ui.labelBothMode)
+
     def add_chart(self):
         self.chart = QtChart.QChart()
+        self.chartview = QtChart.QChartView(self.chart)
+        self.chartview.setRenderHint(QtGui.QPainter.Antialiasing, True)
+
         self.chart.legend().hide()
         self.chart.setBackgroundVisible(visible=False)
         self.chart.setDropShadowEnabled(enabled=False)
         self.chart.setMinimumHeight(180)
-        #self.chart.setAnimationOptions(QtChart.QChart.SeriesAnimations)
+        #self.chart.setRenderHint(QPainter.Antialiasing, True)
+
+
+       # self.chart.setAnimationOptions(QtChart.QChart.SeriesAnimations)
         self.chart.setMargins(QtCore.QMargins(0,0,0,0))
         self.series = QtChart.QPieSeries()
         self.series.setObjectName('series')
         self.series.setUseOpenGL(enable=True)
-        self.series.setHoleSize(0.55)
-
+        self.series.setHoleSize(0.58)
+        
         for i in range(8):
             ps = QtChart.QPieSlice(str(i), 1)
             ps.setBorderColor(QtGui.QColor(1,1,1, 255))
             ps.setColor(QtGui.QColor(i * 32,0,0))
             ps.clicked.connect(self.slice_clicked)
-            #ps.hovered.connect(self.sliceHovered)
+            ps.setExploded(True)
+            ps.setExplodeDistanceFactor(0.001)
+            # pen = ps.pen()
+            # pen.setWidth(2)
+            # ps.setPen(pen)
+            ps.hovered.connect(self.slice_hovered)
             self.series.append(ps)
         self.chart.addSeries(self.series)
         self.ui.frame.setChart(self.chart)
@@ -161,6 +222,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.device = None
+        self.picked = self.ui.labelLogo
         self.add_chart()
         self.add_color_dialog()
         self.reload_device_list()
@@ -169,6 +231,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.pushButtonSave.clicked.connect(self.save_clicked)
         self.ui.actionReload.triggered.connect(self.reload_device_list)
         self.ui.labelLogo.mousePressEvent = self.logo_clicked
+        self.ui.radioButtonPresetLogo.clicked.connect(self.preset_logo_changed)
+        self.ui.radioButtonPresetRing.clicked.connect(self.preset_ring_changed)
+        self.ui.radioButtonPresetBoth.clicked.connect(self.preset_both_changed)
         #QtCore.QObject.connect(self.ui.labelLogo, QtCore.SIGNAL("clicked()"), self.logo_clicked)
 
 
