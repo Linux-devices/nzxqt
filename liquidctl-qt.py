@@ -21,33 +21,37 @@ def find_all_supported_devices():
     return itertools.chain(*res)
 
 class MainWindow(QtWidgets.QMainWindow):
-    
+
+    def get_logo_qcolor(self):
+        return QtGui.QColor(self.ui.labelLogo.palette().color(self.ui.labelLogo.foregroundRole()).name())
+
+    def get_logo_color(self):
+        q = self.get_logo_qcolor()
+        return (q.red(), q.green(), q.blue())
+
     def reload_device_list(self):
         last_device = self.device
 
         self.devices = list(enumerate(find_all_supported_devices()))
-        #self.device = last_device if (last_device in self.devices) else self.devices[0]
         self.device = self.devices[0][1]
 
         self.ui.menu_Select_Device.clear()
 
         for i, dev in self.devices:
- 
             action = QtWidgets.QAction(self.ui.menu_Select_Device)
             action.setObjectName(dev.device.serial_number)
             action.setText(dev.description)
-            action.setCheckable(True)
+            #action.setCheckable(True)
             action.triggered.connect(self.select_device)
             self.ui.menu_Select_Device.addAction(action)
 
-            if ((last_device == None) or
-                (last_device.device.serial_number == dev.device.serial_number) 
-                ):
+            if ((last_device == None) or (last_device.device.serial_number == dev.device.serial_number)):
                 self.device = dev
                 action.setChecked(True)
 
         self.ui.comboBoxPresetModes.clear()
         self.ui.comboBoxPresetModes.addItems(self.device.get_color_modes())
+
     def select_device(self, arg):
         self.sender()
 
@@ -58,7 +62,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         mode = self.ui.comboBoxPresetModes.currentText()
         channel = 'sync'
-        colors = []
+        colors = [self.get_logo_color()]
         speed = 'slowest'
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
 
@@ -95,14 +99,19 @@ class MainWindow(QtWidgets.QMainWindow):
         #sender.setBorderColor(QtGui.QColor(128,1,1, 255))
         self.colorDialog.setCurrentColor(self.picked.color())
         #print(sender.label())
-    def logo_clicked(self):
-        self.picked = self.ui.pushButtonLogo
-        self.colorDialog.setCurrentColor(self.picked.textColor())
+    def logo_clicked(self, evt):
+        self.picked = self.ui.labelLogo
+        self.colorDialog.setCurrentColor(self.get_logo_qcolor())
 
     def color_changed(self, value):
         #print(value.name())
         if self.picked != None:
-            self.picked.setColor(value)
+            if isinstance(self.picked, QtWidgets.QLabel):
+                palette = QtGui.QPalette()
+                palette.setColor(self.ui.labelLogo.foregroundRole(), value)
+                self.ui.labelLogo.setPalette(palette)
+            else:
+                self.picked.setColor(value)
 
     def add_chart(self):
         self.chart = QtChart.QChart()
@@ -149,7 +158,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.comboBoxPresetModes.currentTextChanged.connect(self.mode_changed)
         self.ui.pushButtonSave.clicked.connect(self.save_clicked)
         self.ui.actionReload.triggered.connect(self.reload_device_list)
-        self.ui.pushButtonLogo.clicked.connect(self.logo_clicked)
+        self.ui.labelLogo.mousePressEvent = self.logo_clicked
+        #QtCore.QObject.connect(self.ui.labelLogo, QtCore.SIGNAL("clicked()"), self.logo_clicked)
 
 
 app = QtWidgets.QApplication(sys.argv)
