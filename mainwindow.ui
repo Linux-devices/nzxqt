@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>858</width>
-    <height>799</height>
+    <width>822</width>
+    <height>782</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,6 +24,32 @@
        <attribute name="title">
         <string>Cooling</string>
        </attribute>
+       <widget class="QWidget" name="widget" native="true">
+        <property name="geometry">
+         <rect>
+          <x>153</x>
+          <y>13</y>
+          <width>466</width>
+          <height>241</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background-color: black</string>
+        </property>
+       </widget>
+       <widget class="QWidget" name="widget_2" native="true">
+        <property name="geometry">
+         <rect>
+          <x>155</x>
+          <y>279</y>
+          <width>463</width>
+          <height>247</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background-color: black</string>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="tabLighting">
        <attribute name="title">
@@ -44,24 +70,30 @@
             <height>180</height>
            </size>
           </property>
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: #1e1e1e</string>
+          </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
           </property>
           <property name="frameShadow">
            <enum>QFrame::Raised</enum>
           </property>
-          <widget class="QPushButton" name="pushButtonLogo">
+          <widget class="QLabel" name="labelLogo">
            <property name="geometry">
             <rect>
-             <x>44</x>
-             <y>73</y>
-             <width>91</width>
+             <x>54</x>
+             <y>74</y>
+             <width>71</width>
              <height>31</height>
             </rect>
            </property>
            <property name="font">
             <font>
-             <pointsize>22</pointsize>
+             <pointsize>18</pointsize>
              <weight>75</weight>
              <bold>true</bold>
             </font>
@@ -69,8 +101,8 @@
            <property name="text">
             <string>NZXT</string>
            </property>
-           <property name="flat">
-            <bool>true</bool>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
            </property>
           </widget>
          </widget>
@@ -182,10 +214,10 @@
            <widget class="QMdiArea" name="mdiArea">
             <property name="geometry">
              <rect>
-              <x>206</x>
-              <y>7</y>
-              <width>591</width>
-              <height>411</height>
+              <x>193</x>
+              <y>6</y>
+              <width>582</width>
+              <height>397</height>
              </rect>
             </property>
             <property name="sizePolicy">
@@ -194,22 +226,44 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="contextMenuPolicy">
+             <enum>Qt::NoContextMenu</enum>
+            </property>
            </widget>
-           <widget class="QWidget" name="verticalLayoutWidget">
+           <widget class="QWidget" name="layoutWidget">
             <property name="geometry">
              <rect>
-              <x>10</x>
-              <y>10</y>
-              <width>181</width>
-              <height>91</height>
+              <x>6</x>
+              <y>6</y>
+              <width>182</width>
+              <height>178</height>
              </rect>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayoutPresetLeds">
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <property name="spacing">
+              <number>6</number>
+             </property>
+             <property name="sizeConstraint">
+              <enum>QLayout::SetMaximumSize</enum>
+             </property>
              <item>
               <widget class="QComboBox" name="comboBoxPresetModes"/>
              </item>
              <item>
-              <widget class="QLabel" name="label_5">
+              <widget class="QLabel" name="labelPresetModeInfo">
+               <property name="text">
+                <string>TextLabel</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelPresetAniSpeedLabel">
+               <property name="minimumSize">
+                <size>
+                 <width>180</width>
+                 <height>0</height>
+                </size>
+               </property>
                <property name="text">
                 <string>Animation Speed:</string>
                </property>
@@ -230,6 +284,26 @@
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelPresetAniSpeedInfo">
+               <property name="text">
+                <string>TextLabel</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="verticalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
              </item>
             </layout>
            </widget>
@@ -257,7 +331,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>858</width>
+     <width>822</width>
      <height>30</height>
     </rect>
    </property>
@@ -265,6 +339,15 @@
     <property name="title">
      <string>Fi&amp;le</string>
     </property>
+    <addaction name="actionNew"/>
+    <addaction name="actionOpen"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSave_As"/>
+    <addaction name="separator"/>
+    <addaction name="actionReset"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit_2"/>
    </widget>
    <widget class="QMenu" name="menuDevice">
     <property name="title">
@@ -296,6 +379,36 @@
   <action name="actiondummy">
    <property name="text">
     <string>&amp;dummy</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>&amp;Save</string>
+   </property>
+  </action>
+  <action name="actionSave_As">
+   <property name="text">
+    <string>Sa&amp;ve As...</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>&amp;Open...</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="text">
+    <string>&amp;New Profile</string>
+   </property>
+  </action>
+  <action name="actionReset">
+   <property name="text">
+    <string>&amp;Reset</string>
+   </property>
+  </action>
+  <action name="actionExit_2">
+   <property name="text">
+    <string>&amp;Exit</string>
    </property>
   </action>
  </widget>
