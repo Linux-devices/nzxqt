@@ -19,7 +19,6 @@ DRIVERS = [
 _SLICE_BORDER = {
     'enable'  : QtGui.QColor(1,1,1,160),
     'disable' : QtGui.QColor(127,127,127,160),
-    'hover'   : QtGui.QPalette().color(QtGui.QPalette.Highlight),
     'picked'  : QtGui.QPalette().color(QtGui.QPalette.HighlightedText)
 }
 
@@ -29,22 +28,7 @@ def find_all_supported_devices():
 
 class MainWindow(QtWidgets.QMainWindow):
 
-    def device_selection_changed(self):
-        """Updates the interface when a device has been selected"""
-        for item in self.ui.menu_Select_Device.children():
-            if isinstance(item, QtWidgets.QAction):
-                item.setChecked((self.device.device.serial_number == item.objectName()))
-
-        self.ui.comboBoxPresetModes.clear()
-
-        for mode in self.device.get_color_modes():
-            self.ui.comboBoxPresetModes.addItem(str(mode).title())
-
-        self.ui.labelDevDeviceName.setText("Device: %s" % self.device.description)
-        self.ui.labelDevSerialNo.setText("Serial No: %s" % self.device.device.serial_number)
-
-        self.preset_mode_changed()
-    def update_menu_device_list(self):
+    def menu_device_reload(self):
         """Populates device menu with supported devices"""
         last_device = self.device if hasattr(self, 'device') else None
 
@@ -58,31 +42,92 @@ class MainWindow(QtWidgets.QMainWindow):
             action = QtWidgets.QAction(dev.description, self.ui.menu_Select_Device)
             action.setObjectName(dev.device.serial_number)
             action.setCheckable(True)
-            action.triggered.connect(self.select_device_menu_tiggered)
+            action.triggered.connect(self.menu_device_selected)
 
             self.ui.menu_Select_Device.addAction(action)
 
             if ((last_device == None) or (last_device.device.serial_number == dev.device.serial_number)):
                 self.device = dev
 
-        self.device_selection_changed()
-    def select_device_menu_tiggered(self):
+        self.light_device_selected()
+    def menu_device_selected(self):
         """Activates device menu item when clicked"""
         for i, dev in self.devices:
             if (dev.device.serial_number == self.sender().objectName()):
                 self.device = dev
                 break
 
-        self.device_selection_changed()
+        self.light_device_selected()
 
-    def preset_save_clicked(self):
+    def light_preset_highlight_valid_slices(self):
+        """Highlights ring segments and radiobuttons that are valid for the preset"""
+        mode = self.ui.comboBoxPresetModes.currentText().lower()
+        if mode == '':
+            return
+
+        mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
+        
+        if (ringonly):
+            self.ui.radioButtonPresetRing.setChecked(True)
+        else:
+            self.ui.radioButtonPresetRing.setEnabled(not ringonly)
+
+        self.ui.radioButtonPresetBoth.setEnabled(not ringonly)
+        self.ui.radioButtonPresetLogo.setEnabled(not ringonly)
+
+        for i, ps in enumerate(self.series.slices()):
+            ps.setBorderColor(_SLICE_BORDER['enable'])
+
+        for i, ps in enumerate(self.series.slices()):
+            if i == maxcolors:
+                break
+            ps.setBorderColor(_SLICE_BORDER['disable'])
+        
+        if isinstance(self.picked, QtChart.QPieSlice):
+            self.picked.setBorderColor(_SLICE_BORDER['picked'])
+        
+        font = self.ui.labelLogo.font()
+        font.setUnderline(self.picked == self.ui.labelLogo)
+        self.ui.labelLogo.setFont(font)
+    def light_preset_restore_from_label(self, sender: QtWidgets.QRadioButton, target: QtWidgets.QLabel):
+        """Restores the preset based on the target value"""
+        if (sender.isChecked()):
+            index = self.ui.comboBoxPresetModes.findText(target.text())
+            if index < 0:
+                index = 0
+            self.ui.comboBoxPresetModes.setCurrentIndex(index)
+    def update_animation_speed_label(self, value: str):
+        """Updates animation speed information"""
+        speed = self.get_animation_speed_name(value)
+        self.ui.labelPresetAniSpeedLabel.setText("Animation Speed: %s" % speed.title())
+    def get_animation_speed_name(self, value):
+        for key, i in self.device.get_animation_speeds().items():
+            if (value == i):
+                return key
+    
+    def light_device_selected(self):
+        """Updates the interface when a device has been selected"""
+        for item in self.ui.menu_Select_Device.children():
+            if isinstance(item, QtWidgets.QAction):
+                item.setChecked((self.device.device.serial_number == item.objectName()))
+
+        self.ui.comboBoxPresetModes.clear()
+
+        for mode in self.device.get_color_modes():
+            self.ui.comboBoxPresetModes.addItem(str(mode).title())
+
+        self.ui.labelDevDeviceName.setText("Device: %s" % self.device.description)
+        self.ui.labelDevSerialNo.setText("Serial No: %s" % self.device.device.serial_number)
+
+        self.light_preset_highlight_valid_slices()
+    def light_device_store(self):
         """Sends preset values to the currently selected device"""
         if (self.device == None ):
             return
 
         mode = self.ui.comboBoxPresetModes.currentText().lower()
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
-        colors = [self.get_slice_color(0) if ringonly else bytes.fromhex(self.get_led_logo_qcolor().name().strip("#"))]
+        colors = [self.get_slice_color(0) if ringonly else bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
         channel = 'sync'
         speed = 'slowest'
 
@@ -117,80 +162,42 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.labelBothMode.setText(mode)
 
         self.device.set_color(channel, mode.lower(), colors, speed)
-    def preset_speed_changed(self, value: str):
-        """Updates animation speed information"""
-        speed = self.get_animation_speed_name(value)
-        self.ui.labelPresetAniSpeedLabel.setText("Animation Speed: %s" % speed.title())
-    def preset_mode_changed(self):
-        """Highlights ring segments and radiobuttons that are valid for the preset"""
-        mode = self.ui.comboBoxPresetModes.currentText().lower()
-        if mode == '':
-            return
-
-        mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
-        
-        if (ringonly):
-            self.ui.radioButtonPresetRing.setChecked(True)
-        else:
-            self.ui.radioButtonPresetRing.setEnabled(not ringonly)
-
-        self.ui.radioButtonPresetBoth.setEnabled(not ringonly)
-        self.ui.radioButtonPresetLogo.setEnabled(not ringonly)
-
-        for i, ps in enumerate(self.series.slices()):
-            self.set_slice_border_color(ps, _SLICE_BORDER['enable'])
-
-        for i, ps in enumerate(self.series.slices()):
-            if i == maxcolors:
-                break
-            self.set_slice_border_color(ps)
-        
-        if isinstance(self.picked, QtChart.QPieSlice):
-            self.set_slice_border_color(self.picked, _SLICE_BORDER['picked'])
-        
-        font = self.ui.labelLogo.font()
-        font.setUnderline(self.picked == self.ui.labelLogo)
-        self.ui.labelLogo.setFont(font)
-    def preset_mode_reselect(self, sender: QtWidgets.QRadioButton, target: QtWidgets.QLabel):
-        """Reselects the preset based on the target value"""
-        if (sender.isChecked()):
-            index = self.ui.comboBoxPresetModes.findText(target.text())
-            if index < 0:
-                index = 0
-            self.ui.comboBoxPresetModes.setCurrentIndex(index)
-
-    def get_animation_speed_name(self, value):
-        for key, i in self.device.get_animation_speeds().items():
-            if (value == i):
-                return key
-
-    def get_led_logo_qcolor(self) -> QtGui.QColor:
+    
+    def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
         return self.ui.labelLogo.palette().color(0)
-    def led_logo_clicked(self, evt: QtGui.QMouseEvent):
+    def light_logo_clicked(self, evt: QtGui.QMouseEvent):
         """Set color change target to logo"""
-        self.picked = self.ui.labelLogo
-        self.colorDialog.setCurrentColor(self.get_led_logo_qcolor())
-        
-        self.preset_mode_changed()
-    def led_mode_both_changed(self):
+        self.ui.radioButtonPresetLogo.click()
+    def light_both_mode_restore(self):
         """Reselects both preset when radiobutton is activated"""
-        self.preset_mode_reselect(self.sender(), self.ui.labelBothMode)
-    def led_mode_logo_changed(self):
+        #self.light_preset_restore_from_label(self.sender(), self.ui.labelBothMode)
+        pass
+    def light_logo_mode_restore(self):
         """Reselects logo preset when radiobutton is activated"""
-        self.preset_mode_reselect(self.sender(), self.ui.labelLogoMode)
-    def led_mode_ring_changed(self):
-        """Reselects ring preset when radiobutton is activated"""
-        self.preset_mode_reselect(self.sender(), self.ui.labelRingMode)
+        self.light_preset_restore_from_label(self.sender(), self.ui.labelLogoMode)
+        self.picked = self.ui.labelLogo
 
-    def ring_init(self):
+        self.colorDialog.setCurrentColor(self.get_logo_qcolor())
+        self.light_preset_highlight_valid_slices()
+    def light_ring_mode_restore(self):
+        """Reselects ring preset when radiobutton is activated"""
+        self.light_preset_restore_from_label(self.sender(), self.ui.labelRingMode)
+        if (self.picked == self.ui.labelLogo):
+            self.picked = self.series.slices()[0]
+        
+        self.colorDialog.setCurrentColor(self.picked.color())
+        self.light_preset_highlight_valid_slices()
+
+    def set_light_picked(self, widget):
+        self.picked = widget
+
+    def light_chart_init(self):
         """Adds a ring widget as a QChart"""
         self.chart = QtChart.QChart()
-        self.chartview = QtChart.QChartView(self.chart)
-        self.chartview.setRenderHint(QtGui.QPainter.Antialiasing, True)
-
+        self.chart.setBackgroundRoundness(5)
         self.chart.legend().hide()
-        self.chart.setBackgroundVisible(visible=False)
+        self.chart.setBackgroundVisible(visible=True)
         self.chart.setDropShadowEnabled(enabled=False)
         self.chart.setMinimumHeight(180)
         self.chart.setMargins(QtCore.QMargins(0,0,0,0))
@@ -200,29 +207,32 @@ class MainWindow(QtWidgets.QMainWindow):
         self.series.setHoleSize(0.58)
         self.series.setPieSize(0.75)
 
+        test = self.ui.tab_2_1.palette().color(4)
+        brush = QtGui.QBrush(test)
+        self.chart.setBackgroundBrush(brush)
+
         for i in range(8):
             ps = QtChart.QPieSlice(str(i), 1)
             ps.setExploded(True)
             ps.setExplodeDistanceFactor(0.035)
 
-            ps.clicked.connect(self.ring_slice_clicked)
-            ps.hovered.connect(self.ring_slice_hovered)
-            ps.doubleClicked.connect(self.ring_slice_dblclicked)
+            ps.clicked.connect(self.light_chart_slice_clicked)
+            ps.hovered.connect(self.light_chart_slice_hovered)
+            ps.doubleClicked.connect(self.light_chart_slice_dblclicked)
 
             self.series.append(ps)
         self.chart.addSeries(self.series)
         self.ui.frame.setChart(self.chart)
-    def ring_slice_clicked(self):
+        self.ui.frame.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    def light_chart_slice_clicked(self):
         """Stores slice and sets color dialog color"""
         self.picked = self.sender()
-        self.colorDialog.setCurrentColor(self.last_color)
-
-        self.preset_mode_changed()
-    def ring_slice_dblclicked(self):
+        self.ui.radioButtonPresetRing.click()
+    def light_chart_slice_dblclicked(self):
         """Fills all slices with the same color"""
         for i, ps in enumerate(self.series.slices()):
             ps.setColor(self.last_color)
-    def ring_slice_hovered(self, state):
+    def light_chart_slice_hovered(self, state):
         """Event when slice is hovered"""
         if state:
             self.last_color = self.sender().color()
@@ -230,7 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.sender().setColor(self.last_color)
 
-        self.preset_mode_changed()
+        self.light_preset_highlight_valid_slices()
         self.sender().setExplodeDistanceFactor(0.06 if state else 0.03)
 
         self.hovered = self.sender() if state else None
@@ -238,9 +248,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """Returns bytes the slice at index"""
         color = self.series.slices()[index].color().name().strip("#")
         return bytes.fromhex(color)
-    def set_slice_border_color(self, slice: QtChart.QPieSlice, mode: QtGui.QColor = _SLICE_BORDER['disable']):
-            """Set the slice border"""
-            slice.setBorderColor(mode)
     
     def color_dialog_changed(self, value):
         """Updates color on selected element"""
@@ -265,18 +272,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.picked = self.ui.labelLogo
-        self.ring_init()
+        self.light_chart_init()
         self.color_dialog_init()
-        self.update_menu_device_list()
+        self.menu_device_reload()
 
-        self.ui.comboBoxPresetModes.currentTextChanged.connect(self.preset_mode_changed)
-        self.ui.pushButtonSave.clicked.connect(self.preset_save_clicked)
-        self.ui.actionReload.triggered.connect(self.update_menu_device_list)
-        self.ui.labelLogo.mousePressEvent = self.led_logo_clicked
-        self.ui.radioButtonPresetLogo.clicked.connect(self.led_mode_logo_changed)
-        self.ui.radioButtonPresetRing.clicked.connect(self.led_mode_ring_changed)
-        self.ui.radioButtonPresetBoth.clicked.connect(self.led_mode_both_changed)
-        self.ui.horizontalSliderASpeed.valueChanged.connect(self.preset_speed_changed)
+        self.ui.comboBoxPresetModes.currentTextChanged.connect(self.light_preset_highlight_valid_slices)
+        self.ui.pushButtonSave.clicked.connect(self.light_device_store)
+        self.ui.labelLogo.mousePressEvent = self.light_logo_clicked
+        self.ui.radioButtonPresetLogo.clicked.connect(self.light_logo_mode_restore)
+        self.ui.radioButtonPresetRing.clicked.connect(self.light_ring_mode_restore)
+        self.ui.radioButtonPresetBoth.clicked.connect(self.light_both_mode_restore)
+        self.ui.horizontalSliderASpeed.valueChanged.connect(self.update_animation_speed_label)
+        self.ui.actionReload.triggered.connect(self.menu_device_reload)
+        #self.ui.actionNew.triggered.connect(self.menu_action_new)
+        self.ui.actionExit.triggered.connect(quit)
 
 app = QtWidgets.QApplication(sys.argv)
 
