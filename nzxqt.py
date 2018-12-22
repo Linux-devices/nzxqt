@@ -229,7 +229,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.sender().setColor(self.last_color)
 
         self.preset_mode_changed()
-        self.sender().setExplodeDistanceFactor(0.05 if state else 0.03)
+        self.sender().setExplodeDistanceFactor(0.06 if state else 0.03)
 
         self.hovered = self.sender() if state else None
     def get_slice_color(self, index: int) -> bytes:
