@@ -22,12 +22,13 @@ _With the interface able to set the lighting correctly_
 
 ## Supported devices
 _nzxqt has support for the following modes, with implementation for liquid-ctl modes to be added later:_
-| Device vendor and model | Monitoring | Cooling | Lighting | Details |
-| --- | --- | --- | --- | --- |
-| NZXT Kraken X (X42, X52, X62 or X72) | | | ✓ | [(documentation)](docs/nzxt-kraken-x-3rd-generation.md) |
-| NZXT Smart Device | | | ✓ | [(documentation)](docs/nzxt-smart-device.md) |
-| NZXT Grid+ V3 | | | ✓ | [(documentation)](docs/nzxt-smart-device.md#experimental-support-for-the-grid-v3) |
-| NZXT Kraken M22 | | | ✓ | [(documentation)](docs/nzxt-kraken-x-3rd-generation.md#experimental-support-for-the-kraken-m22) |
+| Device vendor and model | Monitoring | Cooling | Lighting |
+| --- | --- | --- | --- |
+| NZXT Kraken X (X42, X52, X62 or X72) | | | ✓ |
+| NZXT Smart Device | | | ✓ |
+| NZXT Grid+ V3 | | | ✓ |
+| NZXT Kraken M22 | | | ✓ |
+
 
 _liquid-ctl driver does provide support for the following modes, that can be implemented:_
 | Device vendor and model | Monitoring | Cooling | Lighting | Details |
