@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/home/wepiha/Documents/liquidctl-qt/mainwindow.ui'
+# Form implementation generated from reading ui file '/home/wepiha/Documents/nzxqt/mainwindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.11.2
 #
@@ -143,16 +143,6 @@ class Ui_MainWindow(object):
         self.comboBoxPresetModes = QtWidgets.QComboBox(self.tab_2_1)
         self.comboBoxPresetModes.setObjectName("comboBoxPresetModes")
         self.verticalLayout_2.addWidget(self.comboBoxPresetModes)
-        self.labelPresetModeInfo = QtWidgets.QLabel(self.tab_2_1)
-        self.labelPresetModeInfo.setMinimumSize(QtCore.QSize(0, 72))
-        self.labelPresetModeInfo.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
-        self.labelPresetModeInfo.setObjectName("labelPresetModeInfo")
-        self.verticalLayout_2.addWidget(self.labelPresetModeInfo)
-        self.line = QtWidgets.QFrame(self.tab_2_1)
-        self.line.setFrameShape(QtWidgets.QFrame.HLine)
-        self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.line.setObjectName("line")
-        self.verticalLayout_2.addWidget(self.line)
         self.labelPresetAniSpeedLabel = QtWidgets.QLabel(self.tab_2_1)
         self.labelPresetAniSpeedLabel.setMinimumSize(QtCore.QSize(180, 0))
         self.labelPresetAniSpeedLabel.setObjectName("labelPresetAniSpeedLabel")
@@ -255,7 +245,6 @@ class Ui_MainWindow(object):
         self.labelRingMode.setText(_translate("MainWindow", "default"))
         self.labelBothMode.setText(_translate("MainWindow", "default"))
         self.label_2.setText(_translate("MainWindow", "Mode Selection:"))
-        self.labelPresetModeInfo.setText(_translate("MainWindow", "PLACEHOLDER"))
         self.labelPresetAniSpeedLabel.setText(_translate("MainWindow", "Animation Speed: slowest"))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_2_1), _translate("MainWindow", "Preset"))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_2_2), _translate("MainWindow", "Smart"))
