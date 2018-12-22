@@ -69,6 +69,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         if (ringonly):
             self.ui.radioButtonPresetRing.setChecked(True)
+            if (self.picked == self.ui.labelLogo):
+                self.picked = self.series.slices()[0]
             
         for i, ps in enumerate(self.series.slices()):
             ps.setBorderColor(_SLICE_BORDER['enable'])
@@ -84,12 +86,13 @@ class MainWindow(QtWidgets.QMainWindow):
         font = self.ui.labelLogo.font()
         font.setUnderline(self.picked == self.ui.labelLogo)
         self.ui.labelLogo.setFont(font)
+    
     def light_preset_restore_from_label(self, sender: QtWidgets.QRadioButton, target: QtWidgets.QLabel):
         """Restores the preset based on the target value"""
         if (sender.isChecked()):
             index = self.ui.comboBoxPresetModes.findText(target.text())
-            if index < 0:
-                return
+            if (index < 0) and ((target.text() == 'default')):
+                index = 0
             self.ui.comboBoxPresetModes.setCurrentIndex(index)
     def update_animation_speed_label(self, value: str):
         """Updates animation speed information"""
@@ -167,7 +170,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def light_both_mode_restore(self):
         """Reselects both preset when radiobutton is activated"""
         #self.light_preset_restore_from_label(self.sender(), self.ui.labelBothMode)
-        pass
+        self.light_preset_highlight_valid_slices()
     def light_logo_mode_restore(self):
         """Reselects logo preset when radiobutton is activated"""
         self.light_preset_restore_from_label(self.sender(), self.ui.labelLogoMode)
