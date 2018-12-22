@@ -1,38 +1,23 @@
-# liquidctl – liquid cooler control
+# nzxqt – liquid cooler control graphical user interface
 
 _Cross-platform tool and drivers for liquid coolers and other devices_
 
-[![Join the chat at https://gitter.im/liquidctl/Lobby](https://badges.gitter.im/liquidctl/Lobby.svg)](https://gitter.im/liquidctl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+## Screenshot
 
-```
-# liquidctl list
-Device 0, NZXT Kraken X (X42, X52, X62 or X72)
+![Image showing GUI with mode settings transfered via liquidctl driver over USB](docs/screenshot.png "Main GUI")
 
-# liquidctl initialize
+_With the interface able to set the lighting correctly_
 
-# liquidctl status
-Device 0, NZXT Kraken X (X42, X52, X62 or X72)
-Liquid temperature          29.4  °C
-Fan speed                    639  rpm
-Pump speed                  1910  rpm
-Firmware version           4.0.2
-
-# liquidctl set pump speed 90
-# liquidctl set fan speed  20 30  30 50  34 80  40 90  50 100
-
-# liquidctl set ring color fading 350017 ff2608
-# liquidctl set logo color spectrum-wave
-```
+![Image showing hardware with mode settings created in nzxqt with liquidctl driver](docs/photo.jpg "NZXT X52")
 
 <!-- stop here for PyPI -->
 
 ## Summary
 
 1. [Supported devices](#supported-devices)
-2. [Getting liquidctl](#getting-liquidctl)
-3. [The command-line interface](#the-command-line-interface)
-4. [License](#license)
-6. [Related projects](#related-projects)
+2. [Windows and libusb](#windows-and-libusb)
+3. [License](#license)
+4. [Related projects](#related-projects)
 
 
 ## Supported devices
@@ -50,72 +35,11 @@ Firmware version           4.0.2
 _ &nbsp; _Not available at the hardware level_
 
 
-## Getting liquidctl
-
-The easiest way to get liquidctl is to grab a [release from PyPI](https://pypi.org/project/liquidctl/#history) with *pip*.  For currently under development features, pip can also be used to install the latest snapshot of the official repository.
-
-```
-# pip install liquidctl
-# pip install liquidctl==<version>
-# pip install git+https://github.com/jonasmalacofilho/liquidctl
-```
-
-Contributors to the project's code or documentation will want to manually clone the repository and install liquidctl in editable mode.
-
-```
-$ git clone https://github.com/jonasmalacofilho/liquidctl
-$ cd liquidctl
-# pip install --editable .
-```
-
-Of course, a virtual environment can always be used instead of installing the package globally.
-
-In all cases, a suitable backend for PyUSB, such as *libusb*, is necessary.  If you use other Python programs that interact with USB devices, one might already be installed.
-
 ### Windows and libusb
 
 On Windows, libusb v1.0.21 is recommended over the latest v1.0.22.  A known issue with PyUSB generates some annoying – if probably harmless – errors when trying to release the device.
 
 A simple way of installing it is to download the appropriate package from [libusb/releases](https://github.com/libusb/libusb/releases) and extract the `.dll` and `.lib` files that match you runtime (e.g. MS64) to your python installation directory (e.g. `%homepath%\Anaconda3\`).
-
-
-## The command-line interface
-
-The complete list of commands and options can be seen with `liquidctl --help`, but a good place to start is to ask liquidctl to list all recognized devices.
-
-```
-# liquidctl list
-```
-
-In case more than one supported device is found, they can be selected with the `--device <no>` option, according to the output of `list`.  They can also be filtered by `--vendor` id, `--product` id, `--usb-port`, or even `--serial` number.
-
-Devices will usually need to be initialized before they can be used, though each device has its own requirements and limitations.  This and other information specific to a particular device will appear on the documentation linked in the [supported devices](#supported-devices) section.
-
-```
-# liquidctl initialize
-```
-
-Most devices provide some status information, like fan speeds and liquid temperatures.  This can be queried for all devices or using the filtering methods mentioned before.
-
-```
-# liquidctl [options] status
-```
-
-Fan and pump speeds can be set to fixed values or, if the device supports them, custom profiles.
-
-```
-# liquidctl [options] set <channel> speed (<temperature> <percentage>) ...
-# liquidctl [options] set <channel> speed <percentage>
-```
-
-Lighting is controlled in a similar fashion and, again, the specific documentation lists the available channels, modes and other details.  The animation speed can be controlled with the `--speed` flag.
-
-```
-# liquidctl [options] set <channel> color <mode> [<color>] ...
-```
-
-Finally, the `--verbose` option will print some extra information, like automatically made adjustments to the user provided settings.  And if there is a problem, the `--debug` flag will print as much information as possible to help identify its cause; be sure to include it when opening a new issue.
-
 
 ## License
 
