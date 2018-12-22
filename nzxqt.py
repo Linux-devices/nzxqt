@@ -69,12 +69,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         if (ringonly):
             self.ui.radioButtonPresetRing.setChecked(True)
-        else:
-            self.ui.radioButtonPresetRing.setEnabled(not ringonly)
-
-        self.ui.radioButtonPresetBoth.setEnabled(not ringonly)
-        self.ui.radioButtonPresetLogo.setEnabled(not ringonly)
-
+            
         for i, ps in enumerate(self.series.slices()):
             ps.setBorderColor(_SLICE_BORDER['enable'])
 
@@ -94,7 +89,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if (sender.isChecked()):
             index = self.ui.comboBoxPresetModes.findText(target.text())
             if index < 0:
-                index = 0
+                return
             self.ui.comboBoxPresetModes.setCurrentIndex(index)
     def update_animation_speed_label(self, value: str):
         """Updates animation speed information"""
