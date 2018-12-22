@@ -241,6 +241,7 @@ class MainWindow(QtWidgets.QMainWindow):
             slice.setBorderColor(mode)
     
     def color_dialog_changed(self, value):
+        """Updates color on selected element"""
         if self.picked != None:
             if isinstance(self.picked, QtWidgets.QLabel):
                 palette = QtGui.QPalette()
