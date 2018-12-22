@@ -43,10 +43,10 @@ A simple way of installing it is to download the appropriate package from [libus
 
 ## License
 
-Copyright (C) 2018  Jonas Malaco
+nzxqt - Copyright (C) 2018  Wepiha Te Ata
 Copyright (C) 2018  each contribution's author
 
-Incorporates work by leaty, KsenijaS, Alexander Tong and Jens Neumaier, under
+Incorporates work by Jonas Malaco, leaty, KsenijaS, Alexander Tong and Jens Neumaier, under
 the terms of the GNU General Public License.
 
 This program is free software: you can redistribute it and/or modify
@@ -64,6 +64,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 ## Related projects
+
+### [jonasmalacofilho/liquidctl](https://github.com/jonasmalacofilho/liquidctl)
+
+Without him, this would not be possible. 
 
 ### [KsenijaS/krakenx](https://github.com/KsenijaS/krakenx)
 
