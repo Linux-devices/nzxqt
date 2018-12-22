@@ -87,11 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
         speed = 'slowest'
 
         mode = mode.title()
-
-        for key, value in self.device.get_animation_speeds().items():
-            if (value == self.ui.horizontalSliderASpeed.value()):
-                speed = key
-                break
+        speed = self.get_animation_speed_name(self.ui.horizontalSliderASpeed.value())
 
         if (maxcolors > 0):
             for i, ps in enumerate(self.series.slices()):
@@ -123,7 +119,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.device.set_color(channel, mode.lower(), colors, speed)
     def preset_speed_changed(self, value: str):
         """Updates animation speed information"""
-        self.ui.labelPresetAniSpeedLabel.setText("Animation Speed: %s" % value)
+        speed = self.get_animation_speed_name(value)
+        self.ui.labelPresetAniSpeedLabel.setText("Animation Speed: %s" % speed.title())
     def preset_mode_changed(self):
         """Highlights ring segments and radiobuttons that are valid for the preset"""
         mode = self.ui.comboBoxPresetModes.currentText().lower()
@@ -161,6 +158,11 @@ class MainWindow(QtWidgets.QMainWindow):
             if index < 0:
                 index = 0
             self.ui.comboBoxPresetModes.setCurrentIndex(index)
+
+    def get_animation_speed_name(self, value):
+        for key, i in self.device.get_animation_speeds().items():
+            if (value == i):
+                return key
 
     def get_led_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
