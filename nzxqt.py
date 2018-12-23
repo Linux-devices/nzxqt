@@ -28,6 +28,9 @@ def find_all_supported_devices():
 
 class MainWindow(QtWidgets.QMainWindow):
 
+    def menu_file_save(self):
+        self.light_device_store(True)
+
     def menu_device_reload(self):
         """Populates device menu with supported devices"""
         last_device = self.device if hasattr(self, 'device') else None
@@ -59,6 +62,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.light_device_selected()
 
+    def light_preset_validate_all(self):
+        pass
     def light_preset_highlight_valid_slices(self):
         """Highlights ring segments and radiobuttons that are valid for the preset"""
         mode = self.ui.comboBoxPresetModes.currentText().lower()
@@ -118,11 +123,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.labelDevSerialNo.setText("Serial No: %s" % self.device.device.serial_number)
 
         self.light_preset_highlight_valid_slices()
-    def light_device_store(self):
-        """Sends preset values to the currently selected device"""
+    def light_device_store(self, outputToFile = False):
+        """stores preset values values"""
         if (self.device == None ):
             return
 
+        ring_mode = self.ui.labelRingMode.text().lower()
+        logo_mode = self.ui.labelLogoMode.text().lower()
         mode = self.ui.comboBoxPresetModes.currentText().lower()
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
         colors = [self.get_slice_color(0) if ringonly else bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
@@ -159,8 +166,22 @@ class MainWindow(QtWidgets.QMainWindow):
         if (self.ui.labelLogoMode.text() == self.ui.labelRingMode.text()):
             self.ui.labelBothMode.setText(mode)
 
-        self.device.set_color(channel, mode.lower(), colors, speed)
+        if not outputToFile:
+            #if channel == 'sync':
+            self.send_to_device([channel, mode, colors, speed])
+            #else:
     
+    def send_to_device(self, values):
+        channel, mode, colors, speed = values
+
+        if channel == 'logo':
+            self.logo_settings = [channel, mode, colors, speed]
+        elif channel == 'ring':
+            self.ring_settings = [channel, mode, colors, speed]
+
+        print("mode = %s" % values)
+        self.device.set_color(channel, mode.lower(), colors, speed)
+        
     def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
         return self.ui.labelLogo.palette().color(0)
@@ -169,18 +190,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.radioButtonPresetLogo.click()
     def light_both_mode_restore(self):
         """Reselects both preset when radiobutton is activated"""
-        #self.light_preset_restore_from_label(self.sender(), self.ui.labelBothMode)
+        ###self.light_preset_restore_from_label(self.sender(), self.ui.labelBothMode)
         self.light_preset_highlight_valid_slices()
     def light_logo_mode_restore(self):
         """Reselects logo preset when radiobutton is activated"""
-        self.light_preset_restore_from_label(self.sender(), self.ui.labelLogoMode)
+        self.light_preset_restore_from_label(self.ui.radioButtonPresetLogo, self.ui.labelLogoMode)
+
+        #self.set_light_values(self.logo_settings)
         self.picked = self.ui.labelLogo
 
         self.colorDialog.setCurrentColor(self.get_logo_qcolor())
         self.light_preset_highlight_valid_slices()
     def light_ring_mode_restore(self):
         """Reselects ring preset when radiobutton is activated"""
-        self.light_preset_restore_from_label(self.sender(), self.ui.labelRingMode)
+        self.light_preset_restore_from_label(self.ui.radioButtonPresetRing, self.ui.labelRingMode)
         if (self.picked == self.ui.labelLogo):
             self.picked = self.series.slices()[0]
         
@@ -264,6 +287,30 @@ class MainWindow(QtWidgets.QMainWindow):
         window = self.ui.mdiArea.addSubWindow(self.colorDialog, flags=QtCore.Qt.FramelessWindowHint)
         window.showMaximized()
     
+    def set_light_values(self, values):
+        channel, mode, colors, speed = values
+
+        if channel == 'logo':
+            self.logo_settings = values
+            self.ui.labelLogoMode.setText(mode)
+            self.light_logo_mode_restore()
+        elif channel == 'ring':
+            self.ring_settings = values
+            self.ui.labelRingMode.setText(mode)
+            self.light_ring_mode_restore()
+
+        self.ui.labelBothMode.setText("Mixed-modes")
+
+        if (self.ui.labelLogoMode.text() == self.ui.labelRingMode.text()):
+            self.ui.labelBothMode.setText(mode)
+
+        self.send_to_device(values)
+
+    def settings_load(self, file = 'config.json'):
+                              #PLACEHOLDER: will load last stored values here
+        self.set_light_values(['logo', 'Fixed', [b'\xef\xf0\xf1'], 'normal'])
+        self.set_light_values(['ring', 'Spectrum-Wave', [b'\xef\xf0\xf1'], 'normal'])
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.ui = mainwindow.Ui_MainWindow()
@@ -281,9 +328,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.radioButtonPresetRing.clicked.connect(self.light_ring_mode_restore)
         self.ui.radioButtonPresetBoth.clicked.connect(self.light_both_mode_restore)
         self.ui.horizontalSliderASpeed.valueChanged.connect(self.update_animation_speed_label)
+
+        self.ui.actionSave.triggered.connect(self.menu_file_save)
         self.ui.actionReload.triggered.connect(self.menu_device_reload)
         #self.ui.actionNew.triggered.connect(self.menu_action_new)
         self.ui.actionExit.triggered.connect(quit)
+
+        self.settings_load()
 
 app = QtWidgets.QApplication(sys.argv)
 
