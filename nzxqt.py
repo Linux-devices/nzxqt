@@ -140,7 +140,9 @@ class MainWindow(QtWidgets.QMainWindow):
         """Highlights ring segments and radiobuttons that are valid for the preset"""
         mode = self.ui.comboBoxPresetModes.currentText().lower()
         if mode == '':
-            return
+            mode = self.ui.labelRingMode.text().lower()
+            if mode == '':
+                return
 
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
         
@@ -172,7 +174,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for key, i in self.device.get_animation_speeds().items():
             if (value == i):
                 return key
-    
+
     def light_device_selected(self):
         """Updates the interface when a device has been selected"""
         for item in self.ui.menu_Select_Device.children():
@@ -274,6 +276,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Stores slice and sets color dialog color"""
         self.picked = self.sender()
         self.ui.radioButtonPresetRing.click()
+        self.light_preset_highlight_valid_slices()
     def light_chart_slice_dblclicked(self):
         """Fills all slices with the same color"""
         for i, ps in enumerate(self.series.slices()):
