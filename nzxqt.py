@@ -15,13 +15,87 @@ DRIVERS = [
     KrakenTwoDriver,
     NzxtSmartDeviceDriver,
 ]
-
 _SLICE_BORDER = {
     'enable'  : QtGui.QColor(1,1,1,160),
     'disable' : QtGui.QColor(127,127,127,160),
     'picked'  : QtGui.QPalette().color(QtGui.QPalette.HighlightedText)
 }
 
+class Preset(QtCore.QObject):
+    from PyQt5.QtCore import pyqtSignal
+
+    def __init__(self, device: liquidctl.driver.base_usb, channel = 'sync', mode = 'Off', colors = [], speed = 'slowest'):
+        super().__init__()
+        self._device = device
+        self._modes = device.get_color_modes()
+        self._speeds = device.get_animation_speeds()
+        self.values = [channel, mode, colors, speed]
+
+    changed = pyqtSignal(str)
+
+    def write(self):
+        self.device.set_color(self._channel, self._mode, self._colors, self._speed)
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def values(self):
+        return [self._channel, self._mode, self._colors, self._speed]
+    @values.setter
+    def values(self, value):
+        channel, mode, colors, speed = value
+
+        if hasattr(self, '_channel'):
+            pass
+        self._channel = channel
+        self._mode = 'Off'
+        self._colors = []
+        self._speed = 'slowest'
+        self.mode = mode
+        self.colors = colors
+        self.speed = speed
+        pass
+
+    @property
+    def channel(self):
+        return self._channel
+        
+    @property
+    def mode(self):
+        return self._mode
+    @mode.setter
+    def mode(self, value):
+        value = value.lower()
+        if (value not in self._modes):
+            raise AttributeError("The device does not support the mode value '%s'" % value)
+        old_value = self._mode
+        self._mode = value
+        if (value != old_value):
+            self.changed.emit('mode')
+    @property
+    def colors(self):
+        return self._colors
+    @colors.setter
+    def colors(self, values):
+        old_value = self._colors
+        self._colors = values
+        if (values != old_value):
+            self.changed.emit('colors')
+
+    @property
+    def speed(self):
+        return self._speed
+    @speed.setter
+    def speed(self, value):
+        if (value not in self._speeds):
+            raise AttributeError("The device does not support the speed value '%s'" % value)
+        old_value = self._speed
+        self._speed = value
+        if (value != old_value):
+            self.changed.emit('speed')
+    
 def find_all_supported_devices():
     res = map(lambda driver: driver.find_supported_devices(), DRIVERS)
     return itertools.chain(*res)
@@ -29,7 +103,7 @@ def find_all_supported_devices():
 class MainWindow(QtWidgets.QMainWindow):
 
     def menu_file_save(self):
-        self.light_device_store(True)
+        pass
 
     def menu_device_reload(self):
         """Populates device menu with supported devices"""
@@ -62,8 +136,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.light_device_selected()
 
-    def light_preset_validate_all(self):
-        pass
     def light_preset_highlight_valid_slices(self):
         """Highlights ring segments and radiobuttons that are valid for the preset"""
         mode = self.ui.comboBoxPresetModes.currentText().lower()
@@ -92,13 +164,6 @@ class MainWindow(QtWidgets.QMainWindow):
         font.setUnderline(self.picked == self.ui.labelLogo)
         self.ui.labelLogo.setFont(font)
     
-    def light_preset_restore_from_label(self, sender: QtWidgets.QRadioButton, target: QtWidgets.QLabel):
-        """Restores the preset based on the target value"""
-        if (sender.isChecked()):
-            index = self.ui.comboBoxPresetModes.findText(target.text())
-            if (index < 0) and ((target.text() == 'default')):
-                index = 0
-            self.ui.comboBoxPresetModes.setCurrentIndex(index)
     def update_animation_speed_label(self, value: str):
         """Updates animation speed information"""
         speed = self.get_animation_speed_name(value)
@@ -123,95 +188,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.labelDevSerialNo.setText("Serial No: %s" % self.device.device.serial_number)
 
         self.light_preset_highlight_valid_slices()
-    def light_device_store(self, outputToFile = False):
-        """stores preset values values"""
+    def preset_save(self, outputToFile = False):
+        """saves values to preset based on currenly selected channel"""
         if (self.device == None ):
             return
 
-        ring_mode = self.ui.labelRingMode.text().lower()
-        logo_mode = self.ui.labelLogoMode.text().lower()
+        # useful for saving when BOTH channel is selected
         mode = self.ui.comboBoxPresetModes.currentText().lower()
-        mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
-        colors = [self.get_slice_color(0) if ringonly else bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
-        channel = 'sync'
-        speed = 'slowest'
+        both = self.ui.radioButtonPresetBoth.isChecked()
 
-        mode = mode.title()
-        speed = self.get_animation_speed_name(self.ui.horizontalSliderASpeed.value())
+        if (self.ui.radioButtonPresetLogo.isChecked() or both):
+            self.update_preset_from_ui(self.logo_preset, mode)
 
-        if (maxcolors > 0):
-            for i, ps in enumerate(self.series.slices()):
-                if (ringonly and i==0):
-                    continue
-                if (len(colors) == maxcolors):
-                    break
-                colors.append(self.get_slice_color(i))
-
-        if (self.ui.radioButtonPresetLogo.isChecked()):
-            self.ui.labelLogoMode.setText(mode)
-            channel = 'logo'
-
-        if (self.ui.radioButtonPresetRing.isChecked()):
-            self.ui.labelRingMode.setText(mode)
-            channel = 'ring'
-
-        if (self.ui.radioButtonPresetBoth.isChecked()):
-            self.ui.labelLogoMode.setText(mode)
-            self.ui.labelRingMode.setText(mode)
-            self.ui.labelBothMode.setText(mode)
-            channel = 'sync'
-
-        self.ui.labelBothMode.setText("Mixed-modes")
-
-        if (self.ui.labelLogoMode.text() == self.ui.labelRingMode.text()):
-            self.ui.labelBothMode.setText(mode)
-
-        if not outputToFile:
-            #if channel == 'sync':
-            self.send_to_device([channel, mode, colors, speed])
-            #else:
-    
-    def send_to_device(self, values):
-        channel, mode, colors, speed = values
-
-        if channel == 'logo':
-            self.logo_settings = [channel, mode, colors, speed]
-        elif channel == 'ring':
-            self.ring_settings = [channel, mode, colors, speed]
-
-        print("mode = %s" % values)
-        self.device.set_color(channel, mode.lower(), colors, speed)
+        if (self.ui.radioButtonPresetRing.isChecked() or both):
+            self.update_preset_from_ui(self.ring_preset, mode)
         
+        if (both):
+            self.update_preset_from_ui(self.both_preset, mode)
+
+        if (not outputToFile):
+            self.logo_preset.write()
+            self.ring_preset.write()
+    
     def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
         return self.ui.labelLogo.palette().color(0)
     def light_logo_clicked(self, evt: QtGui.QMouseEvent):
         """Set color change target to logo"""
         self.ui.radioButtonPresetLogo.click()
-    def light_both_mode_restore(self):
+    def both_selected(self):
         """Reselects both preset when radiobutton is activated"""
-        ###self.light_preset_restore_from_label(self.sender(), self.ui.labelBothMode)
+        self.update_ui_from_preset(self.both_preset)
         self.light_preset_highlight_valid_slices()
-    def light_logo_mode_restore(self):
+    def logo_selected(self, data):
         """Reselects logo preset when radiobutton is activated"""
-        self.light_preset_restore_from_label(self.ui.radioButtonPresetLogo, self.ui.labelLogoMode)
-
-        #self.set_light_values(self.logo_settings)
         self.picked = self.ui.labelLogo
 
         self.colorDialog.setCurrentColor(self.get_logo_qcolor())
+        self.update_ui_from_preset(self.logo_preset)
         self.light_preset_highlight_valid_slices()
-    def light_ring_mode_restore(self):
+    def ring_selected(self):
         """Reselects ring preset when radiobutton is activated"""
-        self.light_preset_restore_from_label(self.ui.radioButtonPresetRing, self.ui.labelRingMode)
-        if (self.picked == self.ui.labelLogo):
+        if (not isinstance(self.picked, QtChart.QPieSlice)):
             self.picked = self.series.slices()[0]
         
-        self.colorDialog.setCurrentColor(self.picked.color())
+        if (not hasattr(self, 'last_color')):
+            self.last_color = self.picked.color()
+        self.colorDialog.setCurrentColor(self.last_color)
+        self.update_ui_from_preset(self.ring_preset)
         self.light_preset_highlight_valid_slices()
-
-    def set_light_picked(self, widget):
-        self.picked = widget
 
     def light_chart_init(self):
         """Adds a ring widget as a QChart"""
@@ -287,29 +312,89 @@ class MainWindow(QtWidgets.QMainWindow):
         window = self.ui.mdiArea.addSubWindow(self.colorDialog, flags=QtCore.Qt.FramelessWindowHint)
         window.showMaximized()
     
-    def set_light_values(self, values):
-        channel, mode, colors, speed = values
+    def update_preset_from_ui(self, preset: Preset, mode):
+        """stores light settings based on current ui values and returns a preset"""
+        preset.mode = mode
+        colors = [bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
 
-        if channel == 'logo':
-            self.logo_settings = values
-            self.ui.labelLogoMode.setText(mode)
-            self.light_logo_mode_restore()
-        elif channel == 'ring':
-            self.ring_settings = values
-            self.ui.labelRingMode.setText(mode)
-            self.light_ring_mode_restore()
+        for i, ps in enumerate(self.series.slices()):
+            colors.append(self.get_slice_color(i))
 
-        self.ui.labelBothMode.setText("Mixed-modes")
+        preset.colors = colors
+        preset.speed = self.get_animation_speed_name(self.ui.horizontalSliderASpeed.value())
 
-        if (self.ui.labelLogoMode.text() == self.ui.labelRingMode.text()):
-            self.ui.labelBothMode.setText(mode)
+        if (preset.channel == 'sync'):
+            self.update_preset_from_ui(self.logo_preset, mode)
+            self.update_preset_from_ui(self.ring_preset, mode)
+    def update_ui_from_preset(self, data: Preset):
+        """ updates ui values for the given preset data """
+        if (data == None):
+            raise AttributeError("Cannot update from None Preset")
 
-        self.send_to_device(values)
+        if (data.channel == 'logo'):
+            preset = self.logo_preset
+            label = self.ui.labelLogoMode
+        elif (data.channel == 'ring'):
+            preset = self.ring_preset
+            label = self.ui.labelRingMode
+        else:
+            preset = self.both_preset
+            label = self.ui.labelBothMode
+
+        modes = [self.ui.comboBoxPresetModes.itemText(i) for i in range(self.ui.comboBoxPresetModes.count())]
+        speeds = preset.device.get_animation_speeds()
+        mode = preset.mode.title()
+
+        if ((preset.channel not in ['logo', 'ring', 'sync']) 
+        or (mode not in modes)
+        or (preset.speed not in speeds)):
+            return
+
+        for i, ps in enumerate(self.series.slices()):
+            if (i >= (len(preset.colors) - 1)):
+                break
+            ps.setColor(QtGui.QColor("#" + preset.colors[i + 1].hex()))
+
+        self.ui.horizontalSliderASpeed.setValue(speeds[preset.speed])
+        self.ui.comboBoxPresetModes.setCurrentText(mode)
+
+        if (preset.channel in ['logo', 'ring', 'sync']):
+            label.setText(mode)
+            
+        if (self.ui.labelLogoMode.text() != self.ui.labelRingMode.text()):
+            self.ui.labelBothMode.setText("Mixed-modes")
+
+        self.light_preset_highlight_valid_slices()
 
     def settings_load(self, file = 'config.json'):
-                              #PLACEHOLDER: will load last stored values here
-        self.set_light_values(['logo', 'Fixed', [b'\xef\xf0\xf1'], 'normal'])
-        self.set_light_values(['ring', 'Spectrum-Wave', [b'\xef\xf0\xf1'], 'normal'])
+        self.logo_preset = Preset(self.device, 'logo')
+        self.ring_preset = Preset(self.device, 'ring')
+        self.both_preset = Preset(self.device)
+        
+        self.logo_preset.changed.connect(self.logo_changed)
+        self.ring_preset.changed.connect(self.ring_changed)
+        self.both_preset.changed.connect(self.both_changed)
+
+        self.logo_preset.values = ['logo', 'Fixed', [b'\xef\xf0\xf1'], 'slower']
+        self.ring_preset.values = ['ring', 'super-fixed', [b'\xef\xf0\xf1', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
+        
+        self.logo_preset.write()
+        self.ring_preset.write()
+
+        self.update_ui_from_preset(self.both_preset)
+
+    def ring_changed(self, param):
+        #print("ring %s changed" % param)
+        self.update_ui_from_preset(self.ring_preset)
+
+    def logo_changed(self, param):
+        #print("logo %s changed" % param)
+        self.update_ui_from_preset(self.logo_preset)
+    
+    def both_changed(self, param):
+        #print("both %s changed" % param)
+        self.update_ui_from_preset(self.both_preset)
+
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -322,11 +407,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu_device_reload()
 
         self.ui.comboBoxPresetModes.currentTextChanged.connect(self.light_preset_highlight_valid_slices)
-        self.ui.pushButtonSave.clicked.connect(self.light_device_store)
-        self.ui.labelLogo.mousePressEvent = self.light_logo_clicked
-        self.ui.radioButtonPresetLogo.clicked.connect(self.light_logo_mode_restore)
-        self.ui.radioButtonPresetRing.clicked.connect(self.light_ring_mode_restore)
-        self.ui.radioButtonPresetBoth.clicked.connect(self.light_both_mode_restore)
+        self.ui.pushButtonSave.clicked.connect(self.preset_save)
+        self.ui.labelLogo.mousePressEvent = self.logo_selected #self.light_logo_clicked
+        self.ui.radioButtonPresetLogo.clicked.connect(self.logo_selected)
+        self.ui.radioButtonPresetRing.clicked.connect(self.ring_selected)
+        self.ui.radioButtonPresetBoth.clicked.connect(self.both_selected)
         self.ui.horizontalSliderASpeed.valueChanged.connect(self.update_animation_speed_label)
 
         self.ui.actionSave.triggered.connect(self.menu_file_save)
