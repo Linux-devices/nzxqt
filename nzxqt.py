@@ -231,6 +231,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if (channel == 'ring'):
             self.update_ui_from_preset(self.ring_preset)
 
+        self.temp_preset = self.ring_preset
+
     def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
         return self.ui.labelLogo.palette().color(0)
