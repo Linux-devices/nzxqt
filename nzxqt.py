@@ -253,10 +253,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def ring_selected(self):
         """Reselects ring preset when radiobutton is activated"""
-        #self.light_chart_slice_clicked()
-        if (not hasattr(self, 'last_slice')):
-            self.last_slice = self.series.slices()[0]
-        
         self.last_color = self.last_slice.color()
         self.set_picked_slice(self.last_slice)
 
@@ -353,38 +349,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.colorDialog.currentColorChanged.connect(self.color_dialog_changed)
         window = self.ui.mdiArea.addSubWindow(self.colorDialog, flags=QtCore.Qt.FramelessWindowHint)
         window.showMaximized()
+
     def check_revert_state(self):
         colors = self.get_ui_value_of_preset_attr('colors')
-        if (colors != self.temp_preset.colors):
-            self.ui.labelPresetRevert.setEnabled(True)
-        else:
-            self.ui.labelPresetRevert.setEnabled(False)
-
+        self.ui.labelPresetRevert.setEnabled((colors != self.temp_preset.colors))
     def revert_color_state(self, evt):
-        channel = self.get_ui_value_of_preset_attr('channel')
-        print("reverting channel %s" % channel)
-        #self.temp_preset.colors = self.ring_preset.colors
         self.set_picked_slice(self.last_slice)
-        self.colorDialog.setCurrentColor(self.last_slice.color())
         self.set_ui_value_from_preset_attr(self.ring_preset, 'colors')
-        self.check_revert_state()
 
     def get_preset_values_from_ui(self, channel = 'sync'):
         """returns a preset with values taken from the currently set UI"""
         result = [channel]
 
-        for attr in ['mode', 'colors', 'speed']:
+        for attr in _attributes:
             result.append(self.get_ui_value_of_preset_attr(attr))
 
         return result
-
     def update_ui_from_preset(self, preset: Preset):
         """ updates ui values for the given preset data """
-        for attr in ['mode', 'colors', 'speed']:
+        for attr in _attributes:
             self.set_ui_value_from_preset_attr(preset, attr)
 
         self.light_preset_highlight_valid_slices()
-    
     def get_ui_value_of_preset_attr(self, attr):
         if (attr == 'channel'):
             if ( self.ui.radioButtonPresetLogo.isChecked() ):
@@ -405,7 +391,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if (attr == 'speed'):
             return self.get_animation_speed_name(self.ui.horizontalSliderASpeed.value())
-            
     def set_ui_value_from_preset_attr(self, preset, attr):
         if (not isinstance(preset, Preset)):
             raise AttributeError("The object is not of type Preset")
@@ -475,13 +460,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def ring_changed(self, param):
         self.update_ui_from_preset(self.ring_preset)
-
     def logo_changed(self, param):
         self.update_ui_from_preset(self.logo_preset)
-    
     def both_changed(self, param):
         self.update_ui_from_preset(self.both_preset)
-
 
     def __init__(self):
         super(MainWindow, self).__init__()
