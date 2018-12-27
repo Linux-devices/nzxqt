@@ -217,10 +217,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if ((channel == 'logo') or (channel == 'sync')):
             self.preset['ring'].colors = self.preset['logo'].colors
+            self.preset['sync'].colors = self.preset['logo'].colors
 
         if ((channel == 'ring') or (channel == 'sync')):
             self.preset['logo'].colors = self.preset['ring'].colors
+            self.preset['sync'].colors = self.preset['ring'].colors
         
+        if ((channel == 'sync')):
+            self.preset['ring'].values = self.preset['sync'].values
+            self.preset['logo'].values = self.preset['sync'].values
+
         if (not outputToFile):
             self.preset[channel].write()
 
@@ -443,9 +449,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.updating = True
 
-        self.preset['logo'].values = ['logo', 'fixed',       [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'slower']
+        #TODO: assign values from file
+        self.preset['logo'].values = ['logo', 'fixed', [b'\xff\xff\xff'], 'slower']
         self.preset['ring'].values = ['ring', 'super-fixed', [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
-        self.preset['sync'].colors = self.preset['ring'].colors
+
+        # always reassign colors
+        self.preset['logo'].colors = self.preset['sync'].colors = self.preset['ring'].colors
 
         self.ui.radioButtonPresetLogo.click()
 
