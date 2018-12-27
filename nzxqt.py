@@ -231,8 +231,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if (channel == 'ring'):
             self.update_ui_from_preset(self.ring_preset)
 
-        self.temp_preset = self.ring_preset
-
     def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
         return self.ui.labelLogo.palette().color(0)
@@ -242,14 +240,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def both_selected(self):
         """Reselects both preset when radiobutton is activated"""
         self.update_ui_from_preset(self.both_preset)
-        self.temp_preset = self.ring_preset
     def logo_selected(self, data):
         """Reselects logo preset when radiobutton is activated"""
         self.picked = self.ui.labelLogo
 
         self.colorDialog.setCurrentColor(self.get_logo_qcolor())
         self.update_ui_from_preset(self.logo_preset)
-        self.temp_preset = self.ring_preset
 
     def ring_selected(self):
         """Reselects ring preset when radiobutton is activated"""
@@ -259,15 +255,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def light_chart_init(self):
         """Adds a ring widget as a QChart"""
         self.chart = QtChart.QChart()
-        self.chart.setBackgroundRoundness(5)
         self.chart.legend().hide()
-        self.chart.setBackgroundVisible(visible=True)
-        self.chart.setDropShadowEnabled(enabled=False)
         self.chart.setMinimumHeight(180)
         self.chart.setMargins(QtCore.QMargins(0,0,0,0))
         self.series = QtChart.QPieSeries()
-        self.series.setObjectName('series')
-        self.series.setUseOpenGL(enable=True)
         self.series.setHoleSize(0.58)
         self.series.setPieSize(0.75)
 
@@ -294,28 +285,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """Stores slice and sets color dialog color"""
         self.picked = self.sender()
         self.set_picked_slice(self.picked)
-
-    def set_picked_slice(self, obj):
-        self.picked = obj
-        self.last_slice = obj
-        self.temp_preset.colors = self.ring_preset.colors
-
-        self.set_ui_value_from_preset_attr(self.ring_preset, 'channel')
-        self.set_ui_value_from_preset_attr(self.ring_preset, 'mode')
-        self.set_ui_value_from_preset_attr(self.ring_preset, 'speed')
-
-        if (not hasattr(self, 'last_color')):
-            self.last_color = self.picked.color()
-
-        self.colorDialog.setCurrentColor(self.last_color)
-        self.light_preset_highlight_valid_slices()
-        self.check_revert_state()
-
-
     def light_chart_slice_dblclicked(self):
         """Fills all slices with the same color"""
         for i, ps in enumerate(self.series.slices()):
             ps.setColor(self.last_color)
+        self.check_revert_state()
     def light_chart_slice_hovered(self, state):
         """Event when slice is hovered"""
         if state:
@@ -332,6 +306,19 @@ class MainWindow(QtWidgets.QMainWindow):
         """Returns bytes the slice at index"""
         color = self.series.slices()[index].color().name().strip("#")
         return bytes.fromhex(color)
+    def set_picked_slice(self, obj):
+        self.picked = obj
+        self.last_slice = obj
+
+        # skip setting colors so multiple slices can be set
+        for attr in ['channel', 'mode', 'speed']:
+            self.set_ui_value_from_preset_attr(self.ring_preset, attr)
+        
+        if (not hasattr(self, 'last_color')):
+            self.last_color = self.picked.color()
+
+        self.colorDialog.setCurrentColor(self.last_color)
+        self.light_preset_highlight_valid_slices()
     
     def color_dialog_changed(self, value):
         """Updates color on selected element"""
@@ -351,8 +338,10 @@ class MainWindow(QtWidgets.QMainWindow):
         window.showMaximized()
 
     def check_revert_state(self):
-        colors = self.get_ui_value_of_preset_attr('colors')
-        self.ui.labelPresetRevert.setEnabled((colors != self.temp_preset.colors))
+        if (self.get_ui_value_of_preset_attr('colors') != self.ring_preset.colors):
+            self.ui.labelPresetRevert.setEnabled(True)
+        else:
+            self.ui.labelPresetRevert.setEnabled(False)
     def revert_color_state(self, evt):
         self.set_picked_slice(self.last_slice)
         self.set_ui_value_from_preset_attr(self.ring_preset, 'colors')
@@ -436,14 +425,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 if (i >= (len(preset.colors) - 1)):
                     break
                 ps.setColor(QtGui.QColor("#" + preset.colors[i + 1].hex()))
+            self.check_revert_state()
 
-        self.check_revert_state()
 
     def settings_load(self, file = 'config.json'):
         self.logo_preset = Preset(self.device, 'logo')
         self.ring_preset = Preset(self.device, 'ring')
         self.both_preset = Preset(self.device)
-        self.temp_preset = Preset(self.device)
         self.updating = True
 
         self.logo_preset.changed.connect(self.logo_changed)
