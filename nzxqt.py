@@ -314,6 +314,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.colorDialog.setCurrentColor(self.last_color)
         self.light_preset_highlight_valid_slices()
     
+    def color_dialog_closing(self, evt):
+        # prevents colordialog from disappearing when ESC key pressed
+        pass
     def color_dialog_changed(self, value):
         """Updates color on selected element"""
         if isinstance(self.picked, QtWidgets.QLabel):
@@ -324,10 +327,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.picked.setColor(value)
         self.check_revert_state()
     def color_dialog_init(self):
-        #FIXME: need to find a way to prevent the qdialog from disappearing when the user presses esc key
         self.colorDialog = QtWidgets.QColorDialog()
         self.colorDialog.setOptions(QtWidgets.QColorDialog.NoButtons)
         self.colorDialog.currentColorChanged.connect(self.color_dialog_changed)
+        self.colorDialog.done = self.color_dialog_closing
         window = self.ui.mdiArea.addSubWindow(self.colorDialog, flags=QtCore.Qt.FramelessWindowHint)
         window.showMaximized()
 
