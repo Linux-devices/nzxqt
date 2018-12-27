@@ -202,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         presets = {}
         for ch in _channels:
-            presets[ch] = self.get_preset_values_from_ui(ch)
+            presets[ch] = self.update_preset_from_ui(ch)
 
         channel = self.get_ui_value_of_preset_attr('channel')
 
@@ -281,10 +281,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.frame.setRenderHint(QtGui.QPainter.Antialiasing, True)
 
         self.last_slice = self.series.slices()[0]
+        self.picked = self.last_slice
+
     def light_chart_slice_clicked(self):
         """Stores slice and sets color dialog color"""
-        self.picked = self.sender()
-        self.set_picked_slice(self.picked)
+        self.set_picked_slice(self.sender())
     def light_chart_slice_dblclicked(self):
         """Fills all slices with the same color"""
         for i, ps in enumerate(self.series.slices()):
@@ -310,13 +311,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.picked = obj
         self.last_slice = obj
 
-        # skip setting colors so multiple slices can be set
+        # we do not set colors 
         for attr in ['channel', 'mode', 'speed']:
-            self.set_ui_value_from_preset_attr(self.ring_preset, attr)
+            self.set_ui_value_to_preset_attr(self.ring_preset, attr)
         
-        if (not hasattr(self, 'last_color')):
-            self.last_color = self.picked.color()
-
         self.colorDialog.setCurrentColor(self.last_color)
         self.light_preset_highlight_valid_slices()
     
@@ -344,9 +342,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.labelPresetRevert.setEnabled(False)
     def revert_color_state(self, evt):
         self.set_picked_slice(self.last_slice)
-        self.set_ui_value_from_preset_attr(self.ring_preset, 'colors')
+        self.set_ui_value_to_preset_attr(self.ring_preset, 'colors')
 
-    def get_preset_values_from_ui(self, channel = 'sync'):
+    def update_preset_from_ui(self, channel = 'sync'):
         """returns a preset with values taken from the currently set UI"""
         result = [channel]
 
@@ -357,7 +355,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def update_ui_from_preset(self, preset: Preset):
         """ updates ui values for the given preset data """
         for attr in _attributes:
-            self.set_ui_value_from_preset_attr(preset, attr)
+            self.set_ui_value_to_preset_attr(preset, attr)
 
         self.light_preset_highlight_valid_slices()
     def get_ui_value_of_preset_attr(self, attr):
@@ -380,7 +378,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if (attr == 'speed'):
             return self.get_animation_speed_name(self.ui.horizontalSliderASpeed.value())
-    def set_ui_value_from_preset_attr(self, preset, attr):
+    def set_ui_value_to_preset_attr(self, preset, attr):
         if (not isinstance(preset, Preset)):
             raise AttributeError("The object is not of type Preset")
 
@@ -408,10 +406,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.comboBoxPresetModes.setCurrentText(mode)
 
             if (preset.channel in _channels):
-                label.setText(mode.title())
+                label.setText(mode)
 
-            if (self.ui.labelLogoMode.text() == self.ui.labelRingMode.text()):
-                self.both_preset.mode = preset.mode
+            if (self.ring_preset.mode == self.logo_preset.mode):
+                self.both_preset.mode = mode
+                self.ui.labelBothMode.setText(mode)
             else:
                 self.ui.labelBothMode.setText("Mixed-modes")
 
@@ -458,7 +457,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.picked = None
         self.light_chart_init()
         self.color_dialog_init()
         self.menu_device_reload()
