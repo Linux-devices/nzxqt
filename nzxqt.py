@@ -241,7 +241,6 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def preset_file_import(self):
         options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.DontUseNativeDialog
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self,"Import Lighting Preset", "","NZXQT Lighting JSON Profile(*.json)", options=options)
         if fileName:
             print(fileName)
