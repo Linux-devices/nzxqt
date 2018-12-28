@@ -228,19 +228,22 @@ class MainWindow(QtWidgets.QMainWindow):
             self.preset['logo'].values = self.preset['sync'].values
 
         if (not outputToFile):
-            self.preset[channel].write()
+            self.preset['logo'].write()
+            self.preset['ring'].write()
 
         self.updating = True
         self.update_ui_from_preset(self.preset[channel])
     
     def preset_file_import(self):
         options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self,"Import Lighting Preset", "","NZXQT Lighting JSON Profile(*.json)", options=options)
         if fileName:
+            print(fileName)
             self.settings_load(fileName)
     def preset_file_export(self):
         options = QtWidgets.QFileDialog.Options()
-        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self,"Export Lighting Preset","","NZXQT Lighting JSON Profile(*.json)", options=options)
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(None,"Export Lighting Preset","","NZXQT Lighting JSON Profile(*.json)", options=options)
 
         if fileName:
             presets = {}
@@ -476,22 +479,17 @@ class MainWindow(QtWidgets.QMainWindow):
                         break
                     ps.setColor(QtGui.QColor("#" + preset.colors[i + 1].hex()))
             
-    def settings_load(self, file = 'config.json'):
-        self.preset = {}
-
-        for channel in _channels:
-            self.preset[channel] = Preset(self.device, channel)
-            self.preset[channel].changed.connect(self.preset_changed)
-
+    def settings_load(self, fileName = 'default.json'):
         self.updating = True
+        values = {}
+        
+        #defaults
+        values['logo'] = ['logo', 'fixed', [b'\xff\xff\xff'], 'slower']
+        values['ring'] = ['ring', 'super-fixed', [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
 
-        if (not os.path.isfile(file)):
-            self.preset['logo'].values = ['logo', 'fixed', [b'\xff\xff\xff'], 'slower']
-            self.preset['ring'].values = ['ring', 'super-fixed', [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
-        else:
+        if (os.path.isfile(fileName)):
             try:
-                imported = {}
-                with open(file, "r") as file:
+                with open(fileName, "r") as file:
                     data = json.load(file)
 
                 if (len(data) != 2):
@@ -502,19 +500,21 @@ class MainWindow(QtWidgets.QMainWindow):
                         mode = data[channel]['mode']
                         colors = list(map(bytes.fromhex, data[channel]['colors']))
                         speed = data[channel]['speed']
-                        imported[channel] = [channel, mode, colors, speed]
+                        values[channel] = [channel, mode, colors, speed]
                     else:
                         raise KeyError("The file is not a JSON ")
-                self.preset['logo'].values = imported['logo']
-                self.preset['ring'].values = imported['ring']
                 print("Imported data!")
             except:
                 raise KeyError("File is not a NZXQT Lighting JSON Profile")
         
+        self.preset['logo'].values = values['logo']
+        self.preset['ring'].values = values['ring']
+
         # always reassign colors
         self.preset['logo'].colors = self.preset['sync'].colors = self.preset['ring'].colors
 
         self.ui.radioButtonPresetLogo.click()
+        self.preset_save()
 
     def preset_changed(self, attr):
         self.set_ui_value_to_preset_attr(self.sender(), attr)
@@ -543,6 +543,12 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.ui.actionNew.triggered.connect(self.menu_action_new)
         self.ui.actionExit.triggered.connect(quit)
         self.ui.labelPresetRevert.mouseReleaseEvent = self.revert_color_state
+
+        self.preset = {}
+
+        for channel in _channels:
+            self.preset[channel] = Preset(self.device, channel)
+            self.preset[channel].changed.connect(self.preset_changed)
 
         self.settings_load()
         self.check_revert_state()
