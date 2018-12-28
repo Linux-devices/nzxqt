@@ -357,7 +357,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_ui_value_to_preset_attr(self.preset[channel], attr)
 
         self.update_ui_from_preset(self.preset[current_channel])
-        #FIXME: re set color dialog colors after reverting
+
+        if (isinstance(self.picked, QtChart.QPieSlice)):
+            color = self.picked.color()
+        else:
+            color = self.get_logo_qcolor()
+
+        self.colorDialog.setCurrentColor(color)
 
     def update_preset_from_ui(self, channel = 'sync'):
         """returns a list in Preset format based on UI values"""
