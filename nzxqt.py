@@ -232,7 +232,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.updating = True
         self.update_ui_from_preset(self.preset[channel])
+    
+    def preset_file_import(self):
+        options = QtWidgets.QFileDialog.Options()
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self,"Import Lighting Preset", "","NZXQT Lighting JSON Profile(*.json)", options=options)
+        if fileName:
+            self.settings_load(fileName)
+    def preset_file_export(self):
+        options = QtWidgets.QFileDialog.Options()
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self,"Export Lighting Preset","","NZXQT Lighting JSON Profile(*.json)", options=options)
 
+        if fileName:
+            presets = {}
+
+            for channel in ['logo', 'ring']:
+                data = {}
+                for attr in ['mode', 'colors', 'speed']:
+                    value = self.preset[channel].attr(attr)
+                    if (attr == 'colors'):
+                        if (channel == 'logo'):
+                            value = []
+                        else:
+                            value = list(map(lambda x: x.hex(), value))
+                    data[attr] = value
+                presets[channel] = data
+
+            with open(fileName, "w") as file:
+                json.dump(presets, file, sort_keys=True, indent=4)
+        
     def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
         return self.ui.labelLogo.palette().color(0)
@@ -458,10 +485,32 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.updating = True
 
-        #TODO: assign values from file
-        self.preset['logo'].values = ['logo', 'fixed', [b'\xff\xff\xff'], 'slower']
-        self.preset['ring'].values = ['ring', 'super-fixed', [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
+        if (not os.path.isfile(file)):
+            self.preset['logo'].values = ['logo', 'fixed', [b'\xff\xff\xff'], 'slower']
+            self.preset['ring'].values = ['ring', 'super-fixed', [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
+        else:
+            try:
+                imported = {}
+                with open(file, "r") as file:
+                    data = json.load(file)
 
+                if (len(data) != 2):
+                    raise KeyError("File is not formatted properly")
+
+                for channel in data:
+                    if ((channel in _channels) and (len(data[channel]) == 3)):
+                        mode = data[channel]['mode']
+                        colors = list(map(bytes.fromhex, data[channel]['colors']))
+                        speed = data[channel]['speed']
+                        imported[channel] = [channel, mode, colors, speed]
+                    else:
+                        raise KeyError("The file is not a JSON ")
+                self.preset['logo'].values = imported['logo']
+                self.preset['ring'].values = imported['ring']
+                print("Imported data!")
+            except:
+                raise KeyError("File is not a NZXQT Lighting JSON Profile")
+        
         # always reassign colors
         self.preset['logo'].colors = self.preset['sync'].colors = self.preset['ring'].colors
 
@@ -469,7 +518,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def preset_changed(self, attr):
         self.set_ui_value_to_preset_attr(self.sender(), attr)
-
+ 
     def __init__(self):
         super(MainWindow, self).__init__()
         self.ui = mainwindow.Ui_MainWindow()
@@ -480,7 +529,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu_device_reload()
 
         self.ui.comboBoxPresetModes.currentTextChanged.connect(self.light_preset_highlight_valid_slices)
-        self.ui.pushButtonSave.clicked.connect(self.preset_save)
+        self.ui.pushButtonPresetSave.clicked.connect(self.preset_save)
+        self.ui.pushButtonPresetImport.clicked.connect(self.preset_file_import)
+        self.ui.pushButtonPresetExport.clicked.connect(self.preset_file_export)
         self.ui.labelLogo.mousePressEvent = self.logo_selected
         self.ui.radioButtonPresetLogo.clicked.connect(self.logo_selected)
         self.ui.radioButtonPresetRing.clicked.connect(self.ring_selected)
