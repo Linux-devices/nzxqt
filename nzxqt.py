@@ -205,6 +205,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.labelDevSerialNo.setText("Serial No: %s" % self.device.device.serial_number)
 
         self.light_preset_highlight_valid_slices()
+
+        if (hasattr(self, 'preset')):
+            channel = self.get_ui_value_of_preset_attr('channel')
+            self.update_ui_from_preset(self.preset[channel])
+
     def preset_save(self, outputToFile = False):
         """saves values to preset based on currenly selected channel"""
         if (self.device == None):
