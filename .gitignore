@@ -6,3 +6,5 @@ dist
 .krakenduty-poc
 .vscode
 
+test.json
+config.json
