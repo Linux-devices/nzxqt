@@ -295,8 +295,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.series.setHoleSize(0.58)
         self.series.setPieSize(0.75)
 
-        test = self.ui.tab_2_1.palette().color(4)
-        brush = QtGui.QBrush(test)
+        bgcolor = self.ui.tab_2_1.palette().color(4)
+        brush = QtGui.QBrush(bgcolor)
         self.chart.setBackgroundBrush(brush)
 
         for i in range(8):
