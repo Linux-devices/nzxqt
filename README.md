@@ -15,10 +15,17 @@ _With the interface able to set the lighting correctly_
 ## Summary
 
 1. [Supported devices](#supported-devices)
-2. [Windows and libusb](#windows-and-libusb)
-3. [License](#license)
-4. [Related projects](#related-projects)
+2. [Requirements](#requirements)
+3. [Windows and libusb](#windows-and-libusb)
+4. [License](#license)
+5. [Related projects](#related-projects)
 
+## Requirements
+
+* python3
+* pyqt5 (PyQt, PyQt5.QtChart)
+* sudo NOPASSWD (linux):
+> $USER ALL=(ALL) NOPASSWD:ALL
 
 ## Supported devices
 See [jonasmalacofilho/liquidctl](https://github.com/jonasmalacofilho/liquidctl) for device support, with full implementation to be added to nzxqt
