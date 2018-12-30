@@ -24,6 +24,10 @@ _SLICE_BORDER = {
 _channels = ['logo', 'ring', 'sync']
 _attributes = ['channel', 'mode', 'colors', 'speed']
 
+# explode distances
+RING_HOVER = 0.065
+RING_NORMAL = 0.035
+
 class Preset(QtCore.QObject):
     from PyQt5.QtCore import pyqtSignal
 
@@ -215,29 +219,24 @@ class MainWindow(QtWidgets.QMainWindow):
         if (self.device == None):
             return
         
-        channel = self.get_ui_value_of_preset_attr('channel')
+        current_channel = self.get_ui_value_of_preset_attr('channel')
 
-        self.updating = (channel == 'sync')
-        self.preset[channel].values = self.update_preset_from_ui(channel)
+        self.updating = (current_channel == 'sync') # allow all labels to update when sync, otherwise they update later
+        self.preset[current_channel].values = self.update_preset_from_ui(current_channel)
 
-        if ((channel == 'logo') or (channel == 'sync')):
-            self.preset['ring'].colors = self.preset['logo'].colors
-            self.preset['sync'].colors = self.preset['logo'].colors
+        if (current_channel == 'sync'):
+            self.preset['ring'].values = self.preset[current_channel].values
+            self.preset['logo'].values = self.preset[current_channel].values
 
-        if ((channel == 'ring') or (channel == 'sync')):
-            self.preset['logo'].colors = self.preset['ring'].colors
-            self.preset['sync'].colors = self.preset['ring'].colors
-        
-        if ((channel == 'sync')):
-            self.preset['ring'].values = self.preset['sync'].values
-            self.preset['logo'].values = self.preset['sync'].values
+        for channel in _channels:
+            self.preset[channel].colors = self.preset[current_channel].colors
 
         if (not outputToFile):
             self.preset['logo'].write()
             self.preset['ring'].write()
 
         self.updating = True
-        self.update_ui_from_preset(self.preset[channel])
+        self.update_ui_from_preset(self.preset[current_channel])
     
     def preset_file_import(self):
         options = QtWidgets.QFileDialog.Options()
@@ -302,7 +301,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(8):
             ps = QtChart.QPieSlice(str(i), 1)
             ps.setExploded(True)
-            ps.setExplodeDistanceFactor(0.035)
+            ps.setExplodeDistanceFactor(RING_NORMAL)
 
             ps.clicked.connect(self.light_chart_slice_clicked)
             ps.hovered.connect(self.light_chart_slice_hovered)
@@ -333,12 +332,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.sender().setColor(self.last_color)
 
         self.light_preset_highlight_valid_slices()
-        self.sender().setExplodeDistanceFactor(0.06 if state else 0.03)
+        self.sender().setExplodeDistanceFactor(RING_HOVER if state else RING_NORMAL)
     def get_slice_color(self, index: int) -> bytes:
         """Returns bytes the slice at index"""
         color = self.series.slices()[index].color().name().strip("#")
         return bytes.fromhex(color)
     def set_picked_slice(self, obj):
+        """store the picked slice object"""
         self.picked = obj
         self.last_slice = obj
 
@@ -349,7 +349,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.light_preset_highlight_valid_slices()
     
     def color_dialog_closing(self, evt):
-        # prevents colordialog from disappearing when ESC key pressed
+        """ captures the event that would otherwise cause the colordialog to disappear """
         pass
     def color_dialog_changed(self, value):
         """Updates color on selected element"""
@@ -361,6 +361,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.picked.setColor(value)
         self.check_revert_state()
     def color_dialog_init(self):
+        """ creates a color dialog and adds it to a widget on the window """
         self.colorDialog = QtWidgets.QColorDialog()
         self.colorDialog.setOptions(QtWidgets.QColorDialog.NoButtons)
         self.colorDialog.currentColorChanged.connect(self.color_dialog_changed)
@@ -369,6 +370,7 @@ class MainWindow(QtWidgets.QMainWindow):
         window.showMaximized()
 
     def check_revert_state(self):
+        """ compares user-interface values to those in the preset, returns TRUE if they match, FALSE if they differ"""
         revert = False
         channel = self.get_ui_value_of_preset_attr('channel')
 
@@ -382,6 +384,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.ui.labelPresetRevert.setEnabled(revert)
     def revert_color_state(self, evt):
+        """ restores the color chart values on the user-interface from those in the current channels preset """
         current_channel = self.get_ui_value_of_preset_attr('channel')
 
         for channel in _channels:
@@ -414,6 +417,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.check_revert_state()
 
     def get_ui_value_of_preset_attr(self, attr):
+        """ returns the user-interface value for an attribute """
         if (attr == 'channel'):
             if ( self.ui.radioButtonPresetLogo.isChecked() ):
                 return 'logo'
