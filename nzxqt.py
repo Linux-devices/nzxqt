@@ -11,6 +11,8 @@ import liquidctl.util
 from liquidctl.driver.kraken_two import KrakenTwoDriver
 from liquidctl.driver.nzxt_smart_device import NzxtSmartDeviceDriver
 
+from liquidctl.common.preset import DeviceLightingPreset
+
 DRIVERS = [
     KrakenTwoDriver,
     NzxtSmartDeviceDriver,
@@ -27,98 +29,6 @@ _attributes = ['channel', 'mode', 'colors', 'speed']
 # explode distances
 RING_HOVER = 0.065
 RING_NORMAL = 0.035
-
-class Preset(QtCore.QObject):
-    from PyQt5.QtCore import pyqtSignal
-
-    def __init__(self, device: liquidctl.driver.base_usb, channel = 'sync', mode = 'Off', colors = [], speed = 'normal'):
-        super().__init__()
-        self.__channel = channel
-        self.__device = device
-        self.__modes = device.get_color_modes()
-        self.__speeds = device.get_animation_speeds()
-        self.values = [channel, mode, colors, speed]
-
-    changed = pyqtSignal(str)
-
-    def attr(self, name):
-        if (name == 'channel'):
-            return self.__channel
-        if (name == 'mode'):
-            return self.__mode
-        if (name == 'colors'):
-            return self.__colors
-        if (name == 'speed'):
-            return self.__speed
-
-    def write(self):
-        self.device.set_color(self.__channel, self.__mode, self.__colors, self.__speed)
-
-    @property
-    def device(self):
-        return self.__device
-
-    @property
-    def values(self):
-        return [self.__channel, self.__mode, self.__colors, self.__speed]
-    @values.setter
-    def values(self, value):
-        channel, mode, colors, speed = value
-
-        #if (not hasattr(self, '__channel')):
-        #    self.__channel = channel
-        self.__mode = 'off'
-        self.__colors = []
-        self.__speed = 'normal'
-        self.mode = mode
-        self.colors = colors
-        self.speed = speed
-
-    @property
-    def channel(self):
-        return self.__channel
-        
-    @property
-    def mode(self):
-        return self.__mode
-    @mode.setter
-    def mode(self, value):
-        value = value.lower()
-        if (value not in self.__modes):
-            raise AttributeError("The device does not support the mode value '%s'" % value)
-        old_value = self.__mode
-        self.__mode = value
-        if (value != old_value):
-            self.changed.emit('mode')
-    @property
-    def modes(self):
-        return self.__modes
-
-    @property
-    def colors(self):
-        return self.__colors
-    @colors.setter
-    def colors(self, values):
-        old_value = self.__colors
-        self.__colors = values
-        if (values != old_value):
-            self.changed.emit('colors')
-
-    @property
-    def speed(self):
-        return self.__speed
-    @speed.setter
-    def speed(self, value):
-        if (value not in self.__speeds):
-            raise AttributeError("The device does not support the speed value '%s'" % value)
-        old_value = self.__speed
-        self.__speed = value
-        if (value != old_value):
-            self.changed.emit('speed')
-    
-    @property
-    def speeds(self):
-        return self.__speeds
 
 def find_all_supported_devices():
     res = map(lambda driver: driver.find_supported_devices(), DRIVERS)
@@ -403,7 +313,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def update_preset_from_ui(self, channel = 'sync'):
         """returns a list in Preset format based on UI values"""
         return list(map(self.get_ui_value_of_preset_attr,_attributes))
-    def update_ui_from_preset(self, preset: Preset):
+    def update_ui_from_preset(self, preset: DeviceLightingPreset):
         """ updates ui values for the given preset data """
         current_channel = self.get_ui_value_of_preset_attr('channel')
 
@@ -436,8 +346,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if (attr == 'speed'):
             return self.get_animation_speed_name(self.ui.horizontalSliderASpeed.value())
     def set_ui_value_to_preset_attr(self, preset, attr):
-        if (not isinstance(preset, Preset)):
-            raise TypeError("The object is not of type Preset")
+        if (not isinstance(preset, DeviceLightingPreset)):
+            raise TypeError("The object is not of type DeviceLightingPreset")
             
         if (not self.updating):
             return
@@ -553,7 +463,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.preset = {}
 
         for channel in _channels:
-            self.preset[channel] = Preset(self.device, channel)
+            self.preset[channel] = DeviceLightingPreset(self.device, channel)
             self.preset[channel].changed.connect(self.preset_changed)
 
         self.settings_load()
