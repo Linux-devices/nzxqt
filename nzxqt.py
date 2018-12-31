@@ -214,7 +214,7 @@ class MainWindow(QtWidgets.QMainWindow):
             channel = self.get_ui_value_of_preset_attr('channel')
             self.update_ui_from_preset(self.preset[channel])
 
-    def preset_save(self, outputToFile = False):
+    def preset_save(self):
         """saves values to preset based on currenly selected channel"""
         if (self.device == None):
             return
@@ -231,9 +231,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for channel in _channels:
             self.preset[channel].colors = self.preset[current_channel].colors
 
-        if (not outputToFile):
-            self.preset['logo'].write()
-            self.preset['ring'].write()
+        self.preset['logo'].write()
+        self.preset['ring'].write()
 
         self.updating = True
         self.update_ui_from_preset(self.preset[current_channel])
