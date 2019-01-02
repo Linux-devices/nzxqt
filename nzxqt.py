@@ -189,36 +189,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.set_picked_slice(self.last_slice)
         self.update_ui_from_preset(self.preset['ring'])
     
-    def light_chart_init(self):
+    def ring_widget_init(self):
         """Adds a ring widget as a QChart"""
         self.widget = QRingWidget(self.ui.frameLightingWidget)
         self.widget.setBackgroundColor(self.ui.tab_2_1.palette().color(4))
         
-        self.widget.slice_clicked.connect(self.light_chart_slice_clicked)
-        self.widget.slice_hovered.connect(self.light_chart_slice_hovered)
-        self.widget.slice_dblclicked.connect(self.light_chart_slice_dblclicked)
+        self.widget.slice_clicked.connect(self.ring_widget_slice_clicked)
+        self.widget.slice_hovered.connect(self.ring_widget_slice_hovered)
+        self.widget.slice_dblclicked.connect(self.ring_widget_slice_dblclicked)
 
         self.last_slice = self.widget.slices()[0]
         self.picked = self.last_slice
 
-    def light_chart_slice_clicked(self, pieslice):
+    def ring_widget_slice_clicked(self, pieslice):
         """Stores slice and sets color dialog color"""
         self.set_picked_slice(pieslice)
-    def light_chart_slice_dblclicked(self):
+    def ring_widget_slice_dblclicked(self):
         """Fills all slices with the same color"""
         for i, ps in enumerate(self.widget.slices()):
             ps.setColor(self.last_color)
         self.check_revert_state()
-    def light_chart_slice_hovered(self, pieslice, state):
+    def ring_widget_slice_hovered(self, pieslice, state):
         """Event when slice is hovered"""
         if state:
             self.last_color = pieslice.color()
 
         self.light_preset_highlight_valid_slices()
-    def get_slice_color(self, index: int) -> bytes:
-        """Returns bytes the slice at index"""
-        color = self.widget.slices()[index].color().name().strip("#")
-        return bytes.fromhex(color)
+
     def set_picked_slice(self, pieslice):
         """store the picked slice object"""
         self.picked = pieslice
@@ -314,7 +311,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if (attr == 'colors'):
             colors = [bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
             for i, ps in enumerate(self.widget.slices()):
-                colors.append(self.get_slice_color(i))
+                color = self.widget.slices()[index].color().name().strip("#")
+                colors.append(bytes.fromhex(color))
             return colors
 
         if (attr == 'speed'):
@@ -414,7 +412,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.light_chart_init()
+        self.ring_widget_init()
         self.color_dialog_init()
         self.menu_device_reload()
 
