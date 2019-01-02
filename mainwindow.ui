@@ -63,7 +63,7 @@
         <item row="0" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QtChart.QChartView" name="frame">
+           <widget class="QtChart.QChartView" name="frameLightingWidget">
             <property name="sizePolicy">
              <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
               <horstretch>0</horstretch>
