@@ -3,9 +3,18 @@
 from PyQt5 import QtGui, QtCore, QtChart
 from PyQt5.QtCore import pyqtSignal
 
+from liquidctl.common.preset import DeviceLightingPreset
+
 # default explode distances
 RING_HOVER = 0.065
 RING_NORMAL = 0.035
+
+_SLICE_BORDER = {
+    'enable'  : QtGui.QColor(1,1,1,160),
+    'disable' : QtGui.QColor(127,127,127,160),
+    'picked'  : QtGui.QPalette().color(QtGui.QPalette.HighlightedText)
+}
+
 
 # QRingWidget - widget based on QtChart that provides a segmented ring
 class QRingWidget(QtCore.QObject):
@@ -14,7 +23,7 @@ class QRingWidget(QtCore.QObject):
     slice_hovered = pyqtSignal(QtChart.QPieSlice, bool)
     slice_dblclicked = pyqtSignal(QtChart.QPieSlice)
 
-    def __init__(self, chartViewParent: QtChart.QChartView):
+    def __init__(self, chartViewParent: QtChart.QChartView, *preset):
         super().__init__()
 
         self.__chart = QtChart.QChart()
@@ -66,6 +75,27 @@ class QRingWidget(QtCore.QObject):
     def setBackgroundColor(self, color):
         brush = QtGui.QBrush(color)
         self.__chart.setBackgroundBrush(brush)
+
+    def highlight_slices(self, maxcolors, pickedObject):
+
+        for i, ps in enumerate(self.__series.slices()):
+            ps.setBorderColor(_SLICE_BORDER['enable'])
+
+        for i, ps in enumerate(self.__series.slices()):
+            if i == maxcolors:
+                break
+            ps.setBorderColor(_SLICE_BORDER['disable'])
+
+        if isinstance(pickedObject, QtChart.QPieSlice):
+            pickedObject.setBorderColor(_SLICE_BORDER['picked'])
+
+    def fill_slices(self, color: QtGui.QColor):
+        for i, ps in enumerate(self.__series.slices()):
+            ps.setColor(color)
+
+    @property
+    def last_slice(self):
+        return self.__last_slice
 
     def slices(self):
         return self.__series.slices()

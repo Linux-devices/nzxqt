@@ -17,11 +17,6 @@ DRIVERS = [
     KrakenTwoDriver,
     NzxtSmartDeviceDriver,
 ]
-_SLICE_BORDER = {
-    'enable'  : QtGui.QColor(1,1,1,160),
-    'disable' : QtGui.QColor(127,127,127,160),
-    'picked'  : QtGui.QPalette().color(QtGui.QPalette.HighlightedText)
-}
 
 _channels = ['logo', 'ring', 'sync']
 _attributes = ['channel', 'mode', 'colors', 'speed']
@@ -75,17 +70,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
 
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
-                    
-        for i, ps in enumerate(self.widget.slices()):
-            ps.setBorderColor(_SLICE_BORDER['enable'])
-
-        for i, ps in enumerate(self.widget.slices()):
-            if i == maxcolors:
-                break
-            ps.setBorderColor(_SLICE_BORDER['disable'])
         
-        if isinstance(self.picked, QtChart.QPieSlice):
-            self.picked.setBorderColor(_SLICE_BORDER['picked'])
+        self.widget.highlight_slices(maxcolors, self.picked)
         
         font = self.ui.labelLogo.font()
         font.setUnderline(self.picked == self.ui.labelLogo)
@@ -197,15 +183,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.widget.slice_hovered.connect(self.ring_widget_slice_hovered)
         self.widget.slice_dblclicked.connect(self.ring_widget_slice_dblclicked)
 
-        self.last_slice = self.widget.slices()[0]
-        self.picked = self.last_slice
+        self.picked = self.widget.last_slice
     def ring_widget_slice_clicked(self, pieslice):
         """Stores slice and sets color dialog color"""
         self.set_picked_slice(pieslice)
     def ring_widget_slice_dblclicked(self):
         """Fills all slices with the same color"""
-        for i, ps in enumerate(self.widget.slices()):
-            ps.setColor(self.last_color)
+        self.widget.fill_slices(self.last_color)
         self.check_revert_state()
     def ring_widget_slice_hovered(self, pieslice, state):
         """Event when slice is hovered"""
@@ -411,7 +395,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.ring_widget_init()
-        self.graph_widget_init()
         self.color_dialog_init()
         self.menu_device_reload()
 
