@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 from liquidctl.driver.base_usb import BaseUsbDriver
 
@@ -26,17 +25,8 @@ class DeviceLightingPreset(QtCore.QObject):
         self.__speeds = device.get_animation_speeds()
         self.values = [channel, mode, colors, speed]
 
-    def attr(self, name):
-        if (name == 'channel'):
-            return self.__channel
-        if (name == 'mode'):
-            return self.__mode
-        if (name == 'colors'):
-            return self.__colors
-        if (name == 'speed'):
-            return self.__speed
-
     def write(self):
+        # write to the device specific BaseUsbDriver 
         self.device.set_color(self.__channel, self.__mode, self.__colors, self.__speed)
 
     @property
