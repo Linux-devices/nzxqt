@@ -12,6 +12,7 @@ from liquidctl.driver.kraken_two import KrakenTwoDriver
 from liquidctl.driver.nzxt_smart_device import NzxtSmartDeviceDriver
 
 from liquidctl.common.preset import DeviceLightingPreset
+from liquidctl.common.qringwidget import QRingWidget
 
 DRIVERS = [
     KrakenTwoDriver,
@@ -25,10 +26,6 @@ _SLICE_BORDER = {
 
 _channels = ['logo', 'ring', 'sync']
 _attributes = ['channel', 'mode', 'colors', 'speed']
-
-# explode distances
-RING_HOVER = 0.065
-RING_NORMAL = 0.035
 
 def find_all_supported_devices():
     res = map(lambda driver: driver.find_supported_devices(), DRIVERS)
@@ -80,10 +77,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         mval, mod2, mod4, mincolors, maxcolors, ringonly = self.device.get_color_modes()[mode]
                     
-        for i, ps in enumerate(self.series.slices()):
+        for i, ps in enumerate(self.widget.slices()):
             ps.setBorderColor(_SLICE_BORDER['enable'])
 
-        for i, ps in enumerate(self.series.slices()):
+        for i, ps in enumerate(self.widget.slices()):
             if i == maxcolors:
                 break
             ps.setBorderColor(_SLICE_BORDER['disable'])
@@ -191,64 +188,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.last_color = self.last_slice.color()
         self.set_picked_slice(self.last_slice)
         self.update_ui_from_preset(self.preset['ring'])
-
+    
     def light_chart_init(self):
         """Adds a ring widget as a QChart"""
-        self.chart = QtChart.QChart()
-        self.chart.legend().hide()
-        self.chart.setMinimumHeight(180)
-        self.chart.setMargins(QtCore.QMargins(0,0,0,0))
-        self.series = QtChart.QPieSeries()
-        self.series.setHoleSize(0.58)
-        self.series.setPieSize(0.75)
+        self.widget = QRingWidget(self.ui.frameLightingWidget)
+        self.widget.setBackgroundColor(self.ui.tab_2_1.palette().color(4))
+        
+        self.widget.slice_clicked.connect(self.light_chart_slice_clicked)
+        self.widget.slice_hovered.connect(self.light_chart_slice_hovered)
+        self.widget.slice_dblclicked.connect(self.light_chart_slice_dblclicked)
 
-        bgcolor = self.ui.tab_2_1.palette().color(4)
-        brush = QtGui.QBrush(bgcolor)
-        self.chart.setBackgroundBrush(brush)
-
-        for i in range(8):
-            ps = QtChart.QPieSlice(str(i), 1)
-            ps.setExploded(True)
-            ps.setExplodeDistanceFactor(RING_NORMAL)
-
-            ps.clicked.connect(self.light_chart_slice_clicked)
-            ps.hovered.connect(self.light_chart_slice_hovered)
-            ps.doubleClicked.connect(self.light_chart_slice_dblclicked)
-
-            self.series.append(ps)
-        self.chart.addSeries(self.series)
-        self.ui.frame.setChart(self.chart)
-        self.ui.frame.setRenderHint(QtGui.QPainter.Antialiasing, True)
-
-        self.last_slice = self.series.slices()[0]
+        self.last_slice = self.widget.slices()[0]
         self.picked = self.last_slice
 
-    def light_chart_slice_clicked(self):
+    def light_chart_slice_clicked(self, pieslice):
         """Stores slice and sets color dialog color"""
-        self.set_picked_slice(self.sender())
+        self.set_picked_slice(pieslice)
     def light_chart_slice_dblclicked(self):
         """Fills all slices with the same color"""
-        for i, ps in enumerate(self.series.slices()):
+        for i, ps in enumerate(self.widget.slices()):
             ps.setColor(self.last_color)
         self.check_revert_state()
-    def light_chart_slice_hovered(self, state):
+    def light_chart_slice_hovered(self, pieslice, state):
         """Event when slice is hovered"""
         if state:
-            self.last_color = self.sender().color()
-            self.sender().setColor(self.last_color.lighter())
-        else:
-            self.sender().setColor(self.last_color)
+            self.last_color = pieslice.color()
 
         self.light_preset_highlight_valid_slices()
-        self.sender().setExplodeDistanceFactor(RING_HOVER if state else RING_NORMAL)
     def get_slice_color(self, index: int) -> bytes:
         """Returns bytes the slice at index"""
-        color = self.series.slices()[index].color().name().strip("#")
+        color = self.widget.slices()[index].color().name().strip("#")
         return bytes.fromhex(color)
-    def set_picked_slice(self, obj):
+    def set_picked_slice(self, pieslice):
         """store the picked slice object"""
-        self.picked = obj
-        self.last_slice = obj
+        self.picked = pieslice
+        self.last_slice = pieslice
 
         # we do not set colors 
         for attr in ['channel', 'mode', 'speed']:
@@ -339,7 +313,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if (attr == 'colors'):
             colors = [bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
-            for i, ps in enumerate(self.series.slices()):
+            for i, ps in enumerate(self.widget.slices()):
                 colors.append(self.get_slice_color(i))
             return colors
 
@@ -390,7 +364,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 palette.setColor(0, color)
                 self.ui.labelLogo.setPalette(palette)
             if (preset.channel == 'ring'):
-                for i, ps in enumerate(self.series.slices()):
+                for i, ps in enumerate(self.widget.slices()):
                     if (i >= (len(preset.colors) - 1)):
                         break
                     ps.setColor(QtGui.QColor("#" + preset.colors[i + 1].hex()))
