@@ -16,6 +16,8 @@ class DeviceLightingPreset(QtCore.QObject):
     speed -- 
     """
 
+    changed = pyqtSignal(str)
+
     def __init__(self, device: BaseUsbDriver, channel = 'sync', mode = 'fixed', colors = [], speed = 'normal'):
         super().__init__()
         self.__channel = channel
@@ -23,8 +25,6 @@ class DeviceLightingPreset(QtCore.QObject):
         self.__modes = device.get_color_modes()
         self.__speeds = device.get_animation_speeds()
         self.values = [channel, mode, colors, speed]
-
-    changed = pyqtSignal(str)
 
     def attr(self, name):
         if (name == 'channel'):
@@ -107,3 +107,5 @@ class DeviceLightingPreset(QtCore.QObject):
     @property
     def speeds(self):
         return self.__speeds
+
+    
