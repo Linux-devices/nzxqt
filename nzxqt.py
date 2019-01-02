@@ -3,11 +3,10 @@ import sys, os
 import mainwindow as mainwindow
 import usb.core
 
-from PyQt5 import *
+from PyQt5 import Qt, QtGui, QtCore, QtWidgets, QtChart
 import itertools
 import json
 
-import liquidctl.util
 from liquidctl.driver.kraken_two import KrakenTwoDriver
 from liquidctl.driver.nzxt_smart_device import NzxtSmartDeviceDriver
 
@@ -68,7 +67,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.light_device_selected()
 
     def light_preset_highlight_valid_slices(self):
-        """Highlights ring segments and radiobuttons that are valid for the preset"""
+        """Highlights ring segments or logo valid for the preset"""
         mode = self.get_ui_value_of_preset_attr('mode')
         if mode == '':
             mode = self.ui.labelRingMode.text().lower()
@@ -159,7 +158,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for channel in ['logo', 'ring']:
                 data = {}
                 for attr in ['mode', 'colors', 'speed']:
-                    value = self.preset[channel].attr(attr)
+                    value = getattr(self.preset[channel], attr)
                     if (attr == 'colors'):
                         if (channel == 'logo'):
                             value = []
@@ -200,7 +199,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.last_slice = self.widget.slices()[0]
         self.picked = self.last_slice
-
     def ring_widget_slice_clicked(self, pieslice):
         """Stores slice and sets color dialog color"""
         self.set_picked_slice(pieslice)
@@ -257,7 +255,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if (attr == 'channel'):
                 continue
 
-            if (self.get_ui_value_of_preset_attr(attr) != self.preset[channel].attr(attr)):
+            if (self.get_ui_value_of_preset_attr(attr) != getattr(self.preset[channel], attr)):
                 revert = True
                 break
 
@@ -311,7 +309,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if (attr == 'colors'):
             colors = [bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
             for i, ps in enumerate(self.widget.slices()):
-                color = self.widget.slices()[index].color().name().strip("#")
+                color = self.widget.slices()[i].color().name().strip("#")
                 colors.append(bytes.fromhex(color))
             return colors
 
@@ -413,6 +411,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.ring_widget_init()
+        self.graph_widget_init()
         self.color_dialog_init()
         self.menu_device_reload()
 
