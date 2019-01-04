@@ -180,7 +180,7 @@ class MainWindow(QtWidgets.QMainWindow):
         current_channel = self.get_ui_value_of_preset_attr('channel')
 
         self.updating = (current_channel == 'sync') # allow all labels to update when sync, otherwise they update later
-        self.preset[current_channel].values = self.update_preset_from_ui(current_channel)
+        self.preset[current_channel].values = list(map(self.get_ui_value_of_preset_attr, _attributes))
 
         if (current_channel == 'sync'):
             self.preset['ring'].values = self.preset[current_channel].values
@@ -247,10 +247,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_ui_value_to_preset_attr(self.preset['ring'], attr)
         self.colorDialog.setCurrentColor(self.last_color)
         self.light_preset_highlight_valid_slices()
-    
-    def color_dialog_closing(self, evt):
-        """ captures the event that would otherwise cause the colordialog to disappear """
-        pass
+
     def color_dialog_changed(self, value):
         """Updates color on selected element"""
         if isinstance(self.picked, QtWidgets.QLabel):
@@ -265,7 +262,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.colorDialog = QtWidgets.QColorDialog()
         self.colorDialog.setOptions(QtWidgets.QColorDialog.NoButtons)
         self.colorDialog.currentColorChanged.connect(self.color_dialog_changed)
-        self.colorDialog.done = self.color_dialog_closing
+        self.colorDialog.done = lambda x: None #captures the event that would otherwise cause the colordialog to disappear
         window = self.ui.mdiArea.addSubWindow(self.colorDialog, flags=QtCore.Qt.FramelessWindowHint)
         window.showMaximized()
 
@@ -289,9 +286,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.colorDialog.setCurrentColor(color)
 
-    def update_preset_from_ui(self, channel = 'sync'):
-        """returns a list in Preset format based on UI values"""
-        return list(map(self.get_ui_value_of_preset_attr,_attributes))
     def update_ui_from_preset(self, preset: DeviceLightingPreset = None):
         """ updates ui values for the given preset data """
         current_channel = self.get_ui_value_of_preset_attr('channel')
@@ -307,13 +301,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def get_ui_value_of_preset_attr(self, attr):
         """ 
-        returns the user-interface value for an attribute 
-        the attribute can return the value(s) of the following:
+        returns the corresponding user-interface attribute value(s) for one the following:
 
-        channel - the preset radio button that is currently checked
-        mode - the preset combobox currently selected mode text
-        colors - an array of both the logo and ring widget colors 
-        speed - the 
+        Parameters::
+        `channel` - the preset radio button that is currently checked\n
+        `mode` - the preset combobox currently selected mode text\n
+        `colors` - an array of both the logo and ring widget colors\n 
+        `speed` - a string matching the current speed setting
         """
         if (attr == 'channel'):
             if ( self.ui.radioButtonPresetLogo.isChecked() ):
@@ -338,8 +332,14 @@ class MainWindow(QtWidgets.QMainWindow):
             for name, value in self.device.get_animation_speeds().items():
                 if (value == speed):
                     return name
-    def set_ui_value_to_preset_attr(self, preset, attr):
-        """ allows user interfaces attribute to be set from a preset attribute """
+    def set_ui_value_to_preset_attr(self, preset: DeviceLightingPreset, attr: str):
+        """ 
+        allows user interfaces attribute to be set from a preset attribute 
+        
+        Parameters::
+        `preset` - a DeviceLightingPreset to acquire attribute data from\n
+        `attr` - the name of the attribute data to acquire, must be either 'channel', 'mode', 'colors', or 'speed'
+        """
         if (not isinstance(preset, DeviceLightingPreset)):
             raise TypeError("The object is not of type DeviceLightingPreset")
         
