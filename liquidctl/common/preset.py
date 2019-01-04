@@ -8,11 +8,11 @@ class DeviceLightingPreset(QtCore.QObject):
     """
     Stores values that can be sent to a device, and provides PyQt5 signals when values change
 
-    Keyword arguments:
-    device -- must be an instance of liquidctl.driver.base_usb
-    channel -- the channel that preset will manage (default: 'sync')
-    mode -- lighting mode, must be supported by the device (default: 'fixed')
-    speed -- 
+    Keyword arguments::
+    `device` -- must be an instance of `BaseUsbDriver`\n
+    `channel` -- the channel that preset will manage, must be either `sync`, `ring`, or `logo` (default: `'sync'`)\n
+    `mode` -- lighting mode, must be in `device.get_color_modes()`\n
+    `speed` -- the animation speed, must be in `device.get_animation_speeds()`
     """
 
     changed = pyqtSignal(str)
