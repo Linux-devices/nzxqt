@@ -304,7 +304,7 @@ class MainWindow(QtWidgets.QMainWindow):
         returns the corresponding user-interface attribute value(s) for one the following:
 
         Parameters::
-        `channel` - the preset radio button that is currently checked\n
+        `channel` - the channel id given to the checked radio button\n
         `mode` - the preset combobox currently selected mode text\n
         `colors` - an array of both the logo and ring widget colors\n 
         `speed` - a string matching the current speed setting
@@ -363,17 +363,16 @@ class MainWindow(QtWidgets.QMainWindow):
             radio.setChecked(True)
 
         elif (attr == 'mode'):
-            mode = getattr(preset, attr).title()
+            mode = preset.mode.title()
             self.ui.comboBoxPresetModes.setCurrentText(mode)
 
-            if (preset.channel in _channels):
-                label.setText(mode)
+            label.setText(mode)
 
             if (self.preset['ring'].mode == self.preset['logo'].mode):
                 self.preset['sync'].mode = mode
                 self.ui.labelBothMode.setText(mode)
             else:
-                self.ui.labelBothMode.setText("Mixed-modes")
+                self.ui.labelBothMode.setText("Mixed-Mode")
 
         elif (attr == 'speed'):
             if (preset.speed not in preset.speeds):

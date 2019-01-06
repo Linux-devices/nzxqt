@@ -26,8 +26,12 @@ class DeviceLightingPreset(QtCore.QObject):
         self.values = [channel, mode, colors, speed]
 
     def write(self):
-        # write to the device specific BaseUsbDriver 
-        self.device.set_color(self.__channel, self.__mode, self.__colors, self.__speed)
+        """ write to the device specific BaseUsbDriver  """
+        # get the maxiumum colors supported by the mode
+        maxcolors = self.device.get_color_modes()[self.__mode][4]
+
+        # write to the device, limiting the total colors
+        self.device.set_color(self.__channel, self.__mode, self.colors[0:maxcolors], self.__speed)
 
     @property
     def device(self):
