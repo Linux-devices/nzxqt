@@ -30,8 +30,13 @@ class DeviceLightingPreset(QtCore.QObject):
         # get the maxiumum colors supported by the mode
         maxcolors = self.device.get_color_modes()[self.__mode][4]
 
-        # write to the device, limiting the total colors
-        self.device.set_color(self.__channel, self.__mode, self.colors[0:maxcolors], self.__speed)
+
+        strip_colors = [i.strip("#") for i in self.colors[0:maxcolors]]
+        # convert back to bytes
+        byte_colors = list(map(bytes.fromhex, strip_colors))
+
+        # write to the device
+        self.device.set_color(self.__channel, self.__mode, byte_colors, self.__speed)
 
     @property
     def device(self):
@@ -75,7 +80,7 @@ class DeviceLightingPreset(QtCore.QObject):
 
     @property
     def colors(self):
-        """the array of colors for the device"""
+        """the array of hexidecimal colors for the channel"""
         return self.__colors
     @colors.setter
     def colors(self, values):
