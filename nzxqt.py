@@ -13,6 +13,9 @@ from liquidctl.driver.nzxt_smart_device import NzxtSmartDeviceDriver
 from liquidctl.common.preset import DeviceLightingPreset
 from liquidctl.common.qringwidget import QRingWidget
 
+from liquidctl.common.fancurvegraph  import FanCurveGraph
+import pyqtgraph as pg
+
 DRIVERS = [
     KrakenTwoDriver,
     NzxtSmartDeviceDriver,
@@ -20,6 +23,24 @@ DRIVERS = [
 
 _channels = ['logo', 'ring', 'sync']
 _attributes = ['channel', 'mode', 'colors', 'speed']
+
+DEFAULT_CONFIG = {
+    "device" : None,
+    "preset" : {
+        "logo": {
+            "colors": [],
+            "mode": "fixed",
+            "speed": "slower"
+        },
+        "ring": {
+            "colors": ["#ffffff", "#ff0000", "#ff7f00", "#ffff00", "#00ff00", "#007fff", "#0000ff", "#7f00ff", "#ff007f"],
+            "mode": "spectrum-wave",
+            "speed": "normal"
+        }
+    },
+    "fan_ctl" : [[0, 0], [30, 30], [50, 70], [60, 100]], 
+    "pump_ctl" : [[0, 0], [30, 30], [50, 70], [80, 100]]
+}
 
 def find_all_supported_devices():
     res = map(lambda driver: driver.find_supported_devices(), DRIVERS)
@@ -116,24 +137,25 @@ class MainWindow(QtWidgets.QMainWindow):
     def import_presets_from_file(self, fileName = 'default.json'):
         self.updating = True
 
-        #some nice defaults
-        values = {
-            'logo': ['logo', 'fixed', [b'\xff\xff\xff'], 'normal'],
-            'ring': ['ring', 'super-fixed', [b'\xff\xff\xff', b'\xff\x00\x00', b'\xffU\x00', b'\xff\xff\x00', b'\x00\xff\x00', b'\x00\x80\xff', b'\x00\x00\xff', b'\xff\x00\x7f', b'\xff\x00\xff'], 'normal']
-        }
+        # use the defaults from read_config()
+        values  = self.config['preset']
 
         if (os.path.isfile(fileName)):
             try:
                 with open(fileName, "r") as file:
                     data = json.load(file)
 
-                if (len(data) != 2):
+                if (not isinstance(data, dict)):
                     raise KeyError("File is not formatted properly")
+
+                if ('preset' in data):
+                    # allow importing config files
+                    data = data['preset']
 
                 for channel in data:
                     if ((channel in _channels) and (len(data[channel]) == 3)):
                         mode = data[channel]['mode']
-                        colors = list(map(bytes.fromhex, data[channel]['colors']))
+                        colors = data[channel]['colors']
                         speed = data[channel]['speed']
                         values[channel] = [channel, mode, colors, speed]
                     else:
@@ -161,8 +183,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 if (attr == 'colors'):
                     if (channel == 'logo'):
                         value = []
-                    else:
-                        value = list(map(lambda x: x.hex(), value))
                 data[attr] = value
             presets[channel] = data
 
@@ -321,10 +341,10 @@ class MainWindow(QtWidgets.QMainWindow):
             return self.ui.comboBoxPresetModes.currentText().lower()
 
         if (attr == 'colors'):
-            colors = [bytes.fromhex(self.get_logo_qcolor().name().strip("#"))]
+            colors = [self.get_logo_qcolor().name()]
             for i, ps in enumerate(self.widget.slices()):
-                color = self.widget.slices()[i].color().name().strip("#")
-                colors.append(bytes.fromhex(color))
+                color = self.widget.slices()[i].color().name()
+                colors.append(color)
             return colors
 
         if (attr == 'speed'):
@@ -381,7 +401,7 @@ class MainWindow(QtWidgets.QMainWindow):
             
         elif (attr == 'colors'):
             if (preset.channel == 'logo'):
-                color = QtGui.QColor("#%s" % preset.colors[0].hex())
+                color = QtGui.QColor(preset.colors[0])
                 palette = self.ui.labelLogo.palette()
                 palette.setColor(0, color)
                 self.ui.labelLogo.setPalette(palette)
@@ -389,17 +409,150 @@ class MainWindow(QtWidgets.QMainWindow):
                 for i, ps in enumerate(self.widget.slices()):
                     if (i >= (len(preset.colors) - 1)):
                         break
-                    ps.setColor(QtGui.QColor("#" + preset.colors[i + 1].hex()))
+                    ps.setColor(QtGui.QColor(preset.colors[i + 1]))
         else:
             raise AttributeError("Could not set unknown attribute '%s'" % attr)
 
     def preset_changed(self, attr):
         self.set_ui_value_to_preset_attr(self.sender(), attr)
  
+    def getSceneItem(self, graphicsView, name):
+        for item in graphicsView.plotItem.items:
+            if (hasattr(item, '_name')) and (item._name == name):
+                return item
+        
+        raise LookupError("The item '%s' was not found" % name)
+
+    def graph_init(self, graphView, xlabel, ylabel):
+        X_VIEW_LIM = 110
+        Y_VIEW_LIM = 110
+        VIEW_MIN = -3
+
+        pg.setConfigOption("antialias", True)
+
+        graphView.setLabels(left=(xlabel), bottom=(ylabel))
+        graphView.setMenuEnabled(False)
+        graphView.setAspectLocked(True)
+        graphView.showGrid(x=True, y=True, alpha=0.1)
+        graphView.getAxis('bottom').setTickSpacing(10, 1)
+        graphView.getAxis('left').setTickSpacing(10, 1)
+        graphView.hideButtons()
+        graphView.setLimits(
+            xMin = VIEW_MIN,
+            yMin = VIEW_MIN,
+            xMax = X_VIEW_LIM + VIEW_MIN,
+            yMax = Y_VIEW_LIM + VIEW_MIN,
+            minXRange = X_VIEW_LIM,
+            maxXRange = X_VIEW_LIM,
+            minYRange = Y_VIEW_LIM,
+            maxYRange = Y_VIEW_LIM - VIEW_MIN
+        )
+
+        color = self.ui.tab_2_1.palette().color(4).name()
+        graphView.setBackground(color)
+        graphView.setStyleSheet("background-color: %s; border-style: solid; border-color: %s; border-width: 2px; border-radius: 5px;" % ( color, color ) )
+
+    def fanctl_graph_init(self):
+        self.graph_init(self.ui.graphicsViewFanCtl, ['Fan Duty', '%'], ["Temperature", '°C'])
+
+        pen = pg.mkPen('w', width=0.2, style=QtCore.Qt.DashLine)
+        xline = pg.InfiniteLine(pos=0, pen=pen, name="currTemp", angle=270)
+        yline = pg.InfiniteLine(pos=0, pen=pen, name="currFan", angle=0)
+
+        pg.InfLineLabel(xline, text="Temp", position=0.7, rotateAxis=(2,0))
+        pg.InfLineLabel(yline, text="Fan", position=0.15, rotateAxis=(0,0))
+        
+        graph = FanCurveGraph(self.ui.graphicsViewFanCtl, data=self.config['fan_ctl'], name='graph' )
+        
+        self.ui.graphicsViewFanCtl.addItem(graph)
+        self.ui.graphicsViewFanCtl.addItem(xline)
+        self.ui.graphicsViewFanCtl.addItem(yline)
+
+    def pumpctl_graph_init(self):
+        self.graph_init(self.ui.graphicsViewPumpCtl, ['Pump Duty', '%'], ["Temperature", '°C'])
+
+        pen = pg.mkPen('w', width=0.2, style=QtCore.Qt.DashLine)
+        xline = pg.InfiniteLine(pos=0, pen=pen, name="currTemp", angle=270)
+        yline = pg.InfiniteLine(pos=0, pen=pen, name="currPump", angle=0)
+
+        pg.InfLineLabel(xline, text="Temp", position=0.7, rotateAxis=(2,0))
+        pg.InfLineLabel(yline, text="Pump", position=0.15, rotateAxis=(0,0))
+
+        graph = FanCurveGraph(self.ui.graphicsViewPumpCtl, data=self.config['pump_ctl'], name='graph' )
+
+        self.ui.graphicsViewPumpCtl.addItem(graph)
+        self.ui.graphicsViewPumpCtl.addItem(xline)
+        self.ui.graphicsViewPumpCtl.addItem(yline)
+    
+    def ctl_timer_init(self):
+        self.ctl_timer = QtCore.QTimer()
+        self.ctl_timer.timeout.connect(self.ctl_timer_tick)
+        self.ctl_timer.start(500)
+
+    def ctl_timer_tick(self):
+        if self.device is None:
+            return
+        
+        device_rpmlimit_fan = 1400
+        device_rpmlimit_pump = 2700
+
+        status = self.device.get_status()
+
+        temp = status[0][1]
+        fan = ( status[1][1] / device_rpmlimit_fan ) * 100
+        pump = ( status[2][1] / device_rpmlimit_pump ) * 100
+
+        self.getSceneItem(self.ui.graphicsViewFanCtl, 'currTemp').setValue(temp)
+        self.getSceneItem(self.ui.graphicsViewFanCtl, 'currFan').setValue(fan)
+
+        self.getSceneItem(self.ui.graphicsViewPumpCtl, 'currTemp').setValue(temp)
+        self.getSceneItem(self.ui.graphicsViewPumpCtl, 'currPump').setValue(pump)
+
+        self.config['fan_ctl'] = self.getSceneItem(self.ui.graphicsViewFanCtl, 'graph').pos.tolist()
+        self.config['pump_ctl'] = self.getSceneItem(self.ui.graphicsViewPumpCtl, 'graph').pos.tolist()
+
+    def load_config(self):
+        """ reads the default configuration file into self.config tuple """
+        temp_config = DEFAULT_CONFIG
+
+        try:
+            with open("config.json", "r") as file:
+                temp_config = json.load(file)
+        except:
+            print("Could not open file, using the default config...")
+
+        # use default values for those that we could not load
+        temp_config = dict(DEFAULT_CONFIG, **temp_config)
+
+        if (len('fan_ctl') < 2):
+            temp_config['fan_ctl'] = DEFAULT_CONFIG['fan_ctl']
+        if (len('pump_ctl') < 2):
+            temp_config['pump_ctl'] = DEFAULT_CONFIG['pump_ctl']
+
+        temp_config['fan_ctl'] = sorted(temp_config['fan_ctl'], key=lambda tup: tup[1])
+        temp_config['pump_ctl'] = sorted(temp_config['pump_ctl'], key=lambda tup: tup[1])
+        
+        self.config = temp_config
+        self.save_config()
+
+    def save_config(self):
+        try:
+            with open("config.json", "w") as file:
+                json.dump(self.config, file, sort_keys=True, indent=4)
+
+                print("Saved config, data: %s " % self.config)
+        except Exception as e:
+            print("Failed to save config! %s" % e)
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.ui = mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
+        
+        self.load_config()
+        self.fanctl_graph_init()
+        self.pumpctl_graph_init()
+        self.ctl_timer_init()
 
         self.ring_widget_init()
         self.color_dialog_init()
