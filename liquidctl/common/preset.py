@@ -88,8 +88,11 @@ class DeviceLightingPreset(QtCore.QObject):
     @property
     def colors(self):
         """the array of hexidecimal colors for the channel"""
+<<<<<<< HEAD
         if (self.__channel == 'logo'):
             return [self.__colors[0]]
+=======
+>>>>>>> c68dbc5b07438dbf326305749079cde37136a125
         return self.__colors
     @colors.setter
     def colors(self, values):
