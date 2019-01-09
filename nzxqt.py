@@ -48,9 +48,6 @@ def find_all_supported_devices():
 
 class MainWindow(QtWidgets.QMainWindow):
 
-    def menu_file_save(self):
-        pass
-
     def menu_device_reload(self):
         """Populates device menu with supported devices"""
         last_device = self.device if hasattr(self, 'device') else None
@@ -105,6 +102,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def light_device_selected(self):
         """Updates the interface when a device has been selected"""
+
+        if ((not self.device is None) and (hasattr(self.device, 'device'))):
+            self.device.connect()
+        else:
+            raise UnboundLocalError("The selected device is not available")
+
         for item in self.ui.menu_Select_Device.children():
             if isinstance(item, QtWidgets.QAction):
                 item.setChecked((self.device.device.serial_number == item.objectName()))
@@ -128,41 +131,42 @@ class MainWindow(QtWidgets.QMainWindow):
         if fileName:
             self.import_presets_from_file(fileName)
     def show_preset_file_export_dialog(self):
+        #
+        # FIXME when the export button is pressed, we require the settings to be saved to the device (and self.preset), 
+        #       otherwise the data will export only values in self.preset, not the values currently shown in the UI
+        #
         options = QtWidgets.QFileDialog.Options()
         fileName, _ = QtWidgets.QFileDialog.getSaveFileName(None,"Export Lighting Preset","","NZXQT Lighting JSON Profile(*.json)", options=options)
 
         if fileName:
             self.export_presets_to_file(fileName)
     
-    def import_presets_from_file(self, fileName = 'default.json'):
+    def import_presets_from_file(self, fileName):
         self.updating = True
 
         # use the defaults from read_config()
         values  = self.config['preset']
 
         if (os.path.isfile(fileName)):
-            try:
-                with open(fileName, "r") as file:
-                    data = json.load(file)
+            with open(fileName, "r") as file:
+                data = json.load(file)
 
-                if (not isinstance(data, dict)):
-                    raise KeyError("File is not formatted properly")
+            if (not isinstance(data, dict)):
+                raise KeyError("File is not formatted properly")
 
-                if ('preset' in data):
-                    # allow importing config files
-                    data = data['preset']
+            if ('preset' in data):
+                # allow importing config files
+                data = data['preset']
 
-                for channel in data:
-                    if ((channel in _channels) and (len(data[channel]) == 3)):
-                        mode = data[channel]['mode']
-                        colors = data[channel]['colors']
-                        speed = data[channel]['speed']
-                        values[channel] = [channel, mode, colors, speed]
-                    else:
-                        raise KeyError("The file is not a JSON ")
-                print("Imported data!")
-            except:
-                raise KeyError("File is not a NZXQT Lighting JSON Profile")
+            for channel in data:
+                if (channel in _channels) :
+                    mode = data[channel]['mode']
+                    colors = data[channel]['colors']
+                    speed = data[channel]['speed']
+                    values[channel] = [channel, mode, colors, speed]
+                else:
+                    raise KeyError("The file is not a JSON ")
+            print("Imported data!")
         
         self.preset['logo'].values = values['logo']
         self.preset['ring'].values = values['ring']
@@ -188,7 +192,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         try:
             with open(fileName, "w") as file:
-                json.dump(presets, file, sort_keys=True, indent=4)
+                json.dump(presets, file, sort_keys=False, indent=4)
         except:
             raise SystemError("Could not write to the file '%s" % fileName)
    
@@ -196,7 +200,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """saves values to preset based on currenly selected channel"""
         if (self.device == None):
             return
-        
+
         current_channel = self.get_ui_value_of_preset_attr('channel')
 
         self.updating = (current_channel == 'sync') # allow all labels to update when sync, otherwise they update later
@@ -206,14 +210,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.preset['ring'].values = self.preset[current_channel].values
             self.preset['logo'].values = self.preset[current_channel].values
 
-        for channel in _channels:
-            self.preset[channel].colors = self.preset[current_channel].colors
-
         self.preset['logo'].write()
         self.preset['ring'].write()
 
         self.updating = True
         self.update_ui_from_preset()
+        self.save_config()
 
     def get_logo_qcolor(self) -> QtGui.QColor:
         """Gets the logo QColor from its Palette"""
@@ -341,10 +343,16 @@ class MainWindow(QtWidgets.QMainWindow):
             return self.ui.comboBoxPresetModes.currentText().lower()
 
         if (attr == 'colors'):
+            channel = self.get_ui_value_of_preset_attr('channel')
+
             colors = [self.get_logo_qcolor().name()]
+            if (channel == 'logo'):
+                return colors
+
             for i, ps in enumerate(self.widget.slices()):
                 color = self.widget.slices()[i].color().name()
                 colors.append(color)
+
             return colors
 
         if (attr == 'speed'):
@@ -533,12 +541,16 @@ class MainWindow(QtWidgets.QMainWindow):
         temp_config['pump_ctl'] = sorted(temp_config['pump_ctl'], key=lambda tup: tup[1])
         
         self.config = temp_config
-        self.save_config()
+        #self.save_config()
 
     def save_config(self):
         try:
+            if (hasattr(self, 'preset')):
+                self.config['preset']['logo'] = self.preset['logo'].to_json()
+                self.config['preset']['ring'] = self.preset['ring'].to_json()
+
             with open("config.json", "w") as file:
-                json.dump(self.config, file, sort_keys=True, indent=4)
+                json.dump(self.config, file, sort_keys=False, indent=4)
 
                 print("Saved config, data: %s " % self.config)
         except Exception as e:
@@ -568,7 +580,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.radioButtonPresetBoth.clicked.connect(self.both_selected)
         self.ui.horizontalSliderASpeed.valueChanged.connect(self.update_animation_speed_label)
 
-        self.ui.actionSave.triggered.connect(self.menu_file_save)
+        self.ui.actionSave.triggered.connect(self.save_config)
         self.ui.actionReload.triggered.connect(self.menu_device_reload)
         #self.ui.actionNew.triggered.connect(self.menu_action_new)
         self.ui.actionExit.triggered.connect(quit)
@@ -581,9 +593,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.preset[channel].changed.connect(self.preset_changed)
         
         #reads presets from file
-        self.import_presets_from_file()
-        # writes presets to file and device, then updates UI
-        self.write_presets_to_device()
+        self.import_presets_from_file("config.json")
 
 app = QtWidgets.QApplication(sys.argv)
 
