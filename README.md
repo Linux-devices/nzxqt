@@ -14,8 +14,8 @@ _With the interface able to set the lighting correctly_
 
 ## Summary
 
-1. [Supported devices](#supported-devices)
-2. [Requirements](#requirements)
+1. [Requirements](#requirements)
+2. [Supported devices](#supported-devices)
 3. [Windows and libusb](#windows-and-libusb)
 4. [License](#license)
 5. [Related projects](#related-projects)
@@ -23,7 +23,10 @@ _With the interface able to set the lighting correctly_
 ## Requirements
 
 * python3
-* pyqt5 (PyQt, PyQt5.QtChart)
++ python3-pyqt5
++ python3-pyqtgraph
++ python3-numpy
+
 * sudo NOPASSWD (linux):
 > $USER ALL=(ALL) NOPASSWD:ALL
 
@@ -62,7 +65,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ### [jonasmalacofilho/liquidctl](https://github.com/jonasmalacofilho/liquidctl)
 
-Without him, this would not be possible. 
+liquidctl is a cli tool and driver to control liquid coolers and other devices
 
 ### [KsenijaS/krakenx](https://github.com/KsenijaS/krakenx)
 
