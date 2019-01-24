@@ -4,6 +4,8 @@ import mainwindow as mainwindow
 import usb.core
 
 from PyQt5 import Qt, QtGui, QtCore, QtWidgets, QtChart
+from PyQt5.QtGui import QPalette
+
 import itertools
 import json
 
@@ -13,7 +15,7 @@ from liquidctl.driver.nzxt_smart_device import NzxtSmartDeviceDriver
 from liquidctl.common.preset import DeviceLightingPreset
 from liquidctl.common.qringwidget import QRingWidget
 
-from liquidctl.common.fancurvegraph  import FanCurveGraph
+from liquidctl.common.graphs  import *
 import pyqtgraph as pg
 
 DRIVERS = [
@@ -423,75 +425,37 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def preset_changed(self, attr):
         self.set_ui_value_to_preset_attr(self.sender(), attr)
- 
-    def getSceneItem(self, graphicsView, name):
-        for item in graphicsView.plotItem.items:
-            if (hasattr(item, '_name')) and (item._name == name):
-                return item
-        
-        raise LookupError("The item '%s' was not found" % name)
 
     def graph_init(self, graphView, xlabel, ylabel):
-        X_VIEW_LIM = 110
-        Y_VIEW_LIM = 110
-        VIEW_MIN = -3
-
-        pg.setConfigOption("antialias", True)
-
-        graphView.setLabels(left=(xlabel), bottom=(ylabel))
-        graphView.setMenuEnabled(False)
-        graphView.setAspectLocked(True)
-        graphView.showGrid(x=True, y=True, alpha=0.1)
-        graphView.getAxis('bottom').setTickSpacing(10, 1)
-        graphView.getAxis('left').setTickSpacing(10, 1)
-        graphView.hideButtons()
-        graphView.setLimits(
-            xMin = VIEW_MIN,
-            yMin = VIEW_MIN,
-            xMax = X_VIEW_LIM + VIEW_MIN,
-            yMax = Y_VIEW_LIM + VIEW_MIN,
-            minXRange = X_VIEW_LIM,
-            maxXRange = X_VIEW_LIM,
-            minYRange = Y_VIEW_LIM,
-            maxYRange = Y_VIEW_LIM - VIEW_MIN
+        InitPlotWidget(
+            graphView, 
+            labels={'left': xlabel, 'bottom': ylabel},
+            showGrid={'x': True, 'y': True, 'alpha': 0.1},
+            tickSpacing={'left': (10, 1), 'bottom': (10, 1)},
+            limits=(-3, 110)
         )
 
-        color = self.ui.tab_2_1.palette().color(4).name()
+        color = graphView.palette().color(QPalette.Dark).name()
         graphView.setBackground(color)
         graphView.setStyleSheet("background-color: %s; border-style: solid; border-color: %s; border-width: 2px; border-radius: 5px;" % ( color, color ) )
-
-    def fanctl_graph_init(self):
-        self.graph_init(self.ui.graphicsViewFanCtl, ['Fan Duty', '%'], ["Temperature", '°C'])
-
-        pen = pg.mkPen('w', width=0.2, style=QtCore.Qt.DashLine)
-        xline = pg.InfiniteLine(pos=0, pen=pen, name="currTemp", angle=270)
-        yline = pg.InfiniteLine(pos=0, pen=pen, name="currFan", angle=0)
-
-        pg.InfLineLabel(xline, text="Temp", position=0.7, rotateAxis=(2,0))
-        pg.InfLineLabel(yline, text="Fan", position=0.15, rotateAxis=(0,0))
-        
-        graph = FanCurveGraph(self.ui.graphicsViewFanCtl, data=self.config['fan_ctl'], name='graph' )
-        
-        self.ui.graphicsViewFanCtl.addItem(graph)
-        self.ui.graphicsViewFanCtl.addItem(xline)
-        self.ui.graphicsViewFanCtl.addItem(yline)
-
-    def pumpctl_graph_init(self):
-        self.graph_init(self.ui.graphicsViewPumpCtl, ['Pump Duty', '%'], ["Temperature", '°C'])
-
-        pen = pg.mkPen('w', width=0.2, style=QtCore.Qt.DashLine)
-        xline = pg.InfiniteLine(pos=0, pen=pen, name="currTemp", angle=270)
-        yline = pg.InfiniteLine(pos=0, pen=pen, name="currPump", angle=0)
-
-        pg.InfLineLabel(xline, text="Temp", position=0.7, rotateAxis=(2,0))
-        pg.InfLineLabel(yline, text="Pump", position=0.15, rotateAxis=(0,0))
-
-        graph = FanCurveGraph(self.ui.graphicsViewPumpCtl, data=self.config['pump_ctl'], name='graph' )
-
-        self.ui.graphicsViewPumpCtl.addItem(graph)
-        self.ui.graphicsViewPumpCtl.addItem(xline)
-        self.ui.graphicsViewPumpCtl.addItem(yline)
     
+    def xctl_graph_init(self, parent: PlotWidget, xName, data: list):
+        self.graph_init(parent, [f'{xName} Duty', '%'], ["Temperature", '°C'])
+
+        pen = pg.mkPen('w', width=0.2, style=QtCore.Qt.DashLine)
+        xline = pg.InfiniteLine(pos=0, pen=pen, name="currTemp", angle=270)
+        yline = pg.InfiniteLine(pos=0, pen=pen, name=f"curr{xName}", angle=0)
+
+        pg.InfLineLabel(xline, text="{value}°C", position=0.04, rotateAxis=(0,0))
+        pg.InfLineLabel(yline, text="{value}%", position=0, rotateAxis=(0,0))
+
+        graph = EditableGraph(parent, data=data )
+
+        parent.addItem(graph)
+        parent.addItem(xline)
+        parent.addItem(yline)
+
+
     def ctl_timer_init(self):
         self.ctl_timer = QtCore.QTimer()
         self.ctl_timer.timeout.connect(self.ctl_timer_tick)
@@ -506,18 +470,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
         status = self.device.get_status()
 
-        temp = status[0][1]
-        fan = ( status[1][1] / device_rpmlimit_fan ) * 100
-        pump = ( status[2][1] / device_rpmlimit_pump ) * 100
+        temp = int(status[0][1])
+        fan = int( ( status[1][1] / device_rpmlimit_fan ) * 100 )
+        pump = int( ( status[2][1] / device_rpmlimit_pump ) * 100 )
 
-        self.getSceneItem(self.ui.graphicsViewFanCtl, 'currTemp').setValue(temp)
-        self.getSceneItem(self.ui.graphicsViewFanCtl, 'currFan').setValue(fan)
+        get_plotwidget_item(self.ui.graphicsViewFanCtl, 'currTemp').setValue(temp)
+        get_plotwidget_item(self.ui.graphicsViewFanCtl, 'currFan').setValue(fan)
 
-        self.getSceneItem(self.ui.graphicsViewPumpCtl, 'currTemp').setValue(temp)
-        self.getSceneItem(self.ui.graphicsViewPumpCtl, 'currPump').setValue(pump)
+        get_plotwidget_item(self.ui.graphicsViewPumpCtl, 'currTemp').setValue(temp)
+        get_plotwidget_item(self.ui.graphicsViewPumpCtl, 'currPump').setValue(pump)
 
-        self.config['fan_ctl'] = self.getSceneItem(self.ui.graphicsViewFanCtl, 'graph').pos.tolist()
-        self.config['pump_ctl'] = self.getSceneItem(self.ui.graphicsViewPumpCtl, 'graph').pos.tolist()
+        self.config['fan_ctl'] = graph_from_widget(self.ui.graphicsViewFanCtl).pos.tolist()
+        self.config['pump_ctl'] = graph_from_widget(self.ui.graphicsViewPumpCtl).pos.tolist()
 
     def load_config(self):
         """ reads the default configuration file into self.config tuple """
@@ -532,13 +496,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # use default values for those that we could not load
         temp_config = dict(DEFAULT_CONFIG, **temp_config)
 
-        if (len('fan_ctl') < 2):
-            temp_config['fan_ctl'] = DEFAULT_CONFIG['fan_ctl']
-        if (len('pump_ctl') < 2):
-            temp_config['pump_ctl'] = DEFAULT_CONFIG['pump_ctl']
-
-        temp_config['fan_ctl'] = sorted(temp_config['fan_ctl'], key=lambda tup: tup[1])
-        temp_config['pump_ctl'] = sorted(temp_config['pump_ctl'], key=lambda tup: tup[1])
+        for key in ['fan_ctl', 'pump_ctl']:
+            if ( len(temp_config[key]) < 2):
+                temp_config[key] = DEFAULT_CONFIG[key]
+            temp_config[key] = sorted(temp_config[key], key=lambda tup: tup[1])
         
         self.config = temp_config
         #self.save_config()
@@ -556,14 +517,33 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             print("Failed to save config! %s" % e)
 
+    def graph_append_point(self):
+        if (self.sender() == self.ui.pushButtonFanCtlAppend):
+            graphicsView = self.ui.graphicsViewFanCtl
+        else:
+            graphicsView = self.ui.graphicsViewPumpCtl
+        
+        graph_from_widget(graphicsView).addPoint()
+
+    def graph_delete_point(self):
+        if (self.sender() == self.ui.pushButtonFanCtlDelete):
+            graphicsView = self.ui.graphicsViewFanCtl
+        else:
+            graphicsView = self.ui.graphicsViewPumpCtl
+
+        graph_from_widget(graphicsView).removePoint()
+
+    def menu_reset(self):
+        raise NotImplementedError()
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.ui = mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
         
         self.load_config()
-        self.fanctl_graph_init()
-        self.pumpctl_graph_init()
+        self.xctl_graph_init(self.ui.graphicsViewFanCtl, 'Fan', self.config['fan_ctl'])
+        self.xctl_graph_init(self.ui.graphicsViewPumpCtl, 'Pump', self.config['pump_ctl'])
         self.ctl_timer_init()
 
         self.ring_widget_init()
@@ -582,9 +562,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.ui.actionSave.triggered.connect(self.save_config)
         self.ui.actionReload.triggered.connect(self.menu_device_reload)
+        self.ui.actionReset.triggered.connect(self.menu_reset)
         #self.ui.actionNew.triggered.connect(self.menu_action_new)
         self.ui.actionExit.triggered.connect(quit)
         self.ui.labelPresetRevert.mouseReleaseEvent = self.revert_color_state
+
+        self.ui.pushButtonFanCtlAppend.clicked.connect(self.graph_append_point)
+        self.ui.pushButtonFanCtlDelete.clicked.connect(self.graph_delete_point)
+
+        self.ui.pushButtonPumpCtlAppend.clicked.connect(self.graph_append_point)
+        self.ui.pushButtonPumpCtlDelete.clicked.connect(self.graph_delete_point)
 
         self.preset = {}
 
