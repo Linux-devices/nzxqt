@@ -161,7 +161,6 @@ class EditableGraph(pg.GraphItem):
             # don't remove the last 2 points
             return
 
-<<<<<<< HEAD
         index = 1
         min_len = self.getPointDistance(0, len(self.data['pos']) -1)
 
@@ -176,22 +175,6 @@ class EditableGraph(pg.GraphItem):
 
         flat = self.data['pos'].tolist()
         del flat[index]
-=======
-        delpos = 1
-        length = 1000
-
-        for i in range(1, len(self.data['pos']) - 1):
-            h = self.getPointDistance(i, i + 1)
-            LOG.info(f"{i} is {h} ")
-            if (h < length):
-                delpos = i
-                length = h
-        
-        flat = self.data['pos'].tolist()
-        LOG.info(f"removePoint() index={delpos}, length={length}")
-
-        del flat[delpos]
->>>>>>> e3992a02915b7cdabbe0a6d4b33f248a78059ffa
         self.setData(pos=np.stack(flat))
     def getIntersection(self, x = None, y = None):
         if (x == None) and (y == None):
