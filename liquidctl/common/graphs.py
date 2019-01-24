@@ -101,6 +101,8 @@ class EditableGraph(pg.GraphItem):
         
         self.setData(pos=np.stack(data))
 
+        parent.addItem(pg.TextItem())
+        
         # adds pg.GraphItem to the parent PlotItems
         parent.addItem(self)
 
