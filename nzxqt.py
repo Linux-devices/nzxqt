@@ -30,11 +30,13 @@ DEFAULT_CONFIG = {
     "device" : None,
     "preset" : {
         "logo": {
-            "colors": [],
+            "channel": "logo",
+            "colors": ["#ffffff"],
             "mode": "fixed",
             "speed": "slower"
         },
         "ring": {
+            "channel": "ring",
             "colors": ["#ffffff", "#ff0000", "#ff7f00", "#ffff00", "#00ff00", "#007fff", "#0000ff", "#7f00ff", "#ff007f"],
             "mode": "spectrum-wave",
             "speed": "normal"
@@ -148,7 +150,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # use the defaults from read_config()
         values  = self.config['preset']
-
+        data = values
+        
         if (os.path.isfile(fileName)):
             with open(fileName, "r") as file:
                 data = json.load(file)
